@@ -1,0 +1,58 @@
+# ======================
+# Android / Gradle
+# ======================
+.gradle/
+build/
+*/build/
+local.properties
+
+# Generated files
+captures/
+.externalNativeBuild/
+.cxx/
+obj/
+
+# APK / AAB outputs
+*.apk
+*.aab
+
+# Keystore (NEVER commit these)
+*.jks
+*.keystore
+
+# ======================
+# IDE / Editor
+# ======================
+.idea/
+*.iml
+.vscode/
+
+# ======================
+# Environment / Secrets
+# ======================
+.env
+.env.local
+google-services.json
+
+# ======================
+# OS
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# Logs / Temp
+# ======================
+*.log
+tmp/
+coverage/
+dist/
+
+# ======================
+# Node (only if using it)
+# ======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

@@ -5,6 +5,6 @@ Repository for Spring 2026 COMP 350 to work on the EkhoGo app.
 Adair Montelongo
 Tahja Martin
 Kristopher Arakelyan
-Chris Henrandez
+Chris Hernandez
 Jude Segundera
 

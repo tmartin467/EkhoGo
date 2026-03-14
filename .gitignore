@@ -1,3 +1,20 @@
+<<<<<<< HEAD
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+=======
 # ======================
 # Android / Gradle
 # ======================
@@ -56,3 +73,4 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+>>>>>>> b3d115a5bb8035b783a1589ef3867d3c48b84f0d

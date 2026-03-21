@@ -70,7 +70,7 @@ fun HomeScreen( modifier: Modifier = Modifier) {
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ) {
-            Text("Will add map later")
+            CampusMapBox()
         }
     }
 }

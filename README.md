@@ -7,4 +7,3 @@ Tahja Martin
 Kristopher Arakelyan
 Chris Hernandez
 Jude Segundera
-

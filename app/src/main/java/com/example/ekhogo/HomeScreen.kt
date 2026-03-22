@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -34,11 +35,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 
@@ -110,48 +111,81 @@ fun MessagesScreen() {
     // The stores all the messages that have been sent
     val messages = remember { mutableStateListOf<ChatMessage>() }
 
+    // Connect to Firebase Authentication
+    val auth = FirebaseAuth.getInstance()
+
     // Connects to Firebase Firestore database
     val db = FirebaseFirestore.getInstance()
 
     // Gets the currently logged-in Firebase user
-    val currentUser = FirebaseAuth.getInstance().currentUser
+    val currentUser = auth.currentUser
 
     // Gets this user's unique ID
-    val currentUserId = currentUser?.uid ?: ""
+    var currentUserId = currentUser?.uid ?: ""
+
+    // Sign in anonymously when screen starts
+    LaunchedEffect(Unit) {
+        if (auth.currentUser == null) {
+            auth.signInAnonymously()
+                .addOnSuccessListener {
+                    currentUserId = auth.currentUser?.uid ?: ""
+                    Log.d("AUTH", "Anonymous sign-in success: $currentUserId")
+                    // Log.d("AUTH", "UID: ${auth.currentUser?.uid}") // Debug: verify different users (UID)
+                }
+                .addOnFailureListener { e ->
+                    Log.e("AUTH", "Anonymous sign-in failed", e)
+                }
+        } else {
+            currentUserId = auth.currentUser?.uid ?: ""
+            Log.d("AUTH", "Already signed in: $currentUserId")
+            // Log.d("AUTH", "UID: ${auth.currentUser?.uid}") // Debug: verify different users (UID)
+        }
+    }
 
     // Listen for messages from Firestore in real time
-    LaunchedEffect(Unit) {
-        db.collection("messages")
-            .orderBy("timestamp", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, error ->
+    DisposableEffect(currentUserId) {
 
-                // Stop if Firestore gives an error
-                if (error != null) {
-                    return@addSnapshotListener
-                }
+        // Don't start running until the user is ready
+        if (currentUserId.isBlank()) {
+            onDispose { }
+        } else {
 
-                // Clear old messages before reloading the newest list
-                messages.clear()
+            val listenerRegistration = db.collection("messages")
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .addSnapshotListener { snapshot, error ->
 
-                // Read each Firebase document and turn it into
-                // a ChatMessage
-                snapshot?.documents?.forEach { document ->
-                    val text = document.getString("text") ?: ""
+                    // Stop if Firestore gives an error
+                    if (error != null) {
+                        Log.e("FIREBASE", "Error loading messages", error)
+                        return@addSnapshotListener
+                    }
 
-                    // Read the sender's user ID from Firestore
-                    val senderId = document.getString("senderId") ?: ""
+                    // Clear old messages before reloading the newest list
+                    messages.clear()
 
-                    messages.add(
-                        ChatMessage(
-                            text = text,
+                    // Read each Firebase document and turn it into
+                    // a ChatMessage
+                    snapshot?.documents?.forEach { document ->
+                        val text = document.getString("text") ?: ""
 
-                            // If the senderId matches the current user, show
-                            // message on the right
-                            isSentByMe = senderId == currentUserId
+                        // Read the sender's user ID from Firestore
+                        val senderId = document.getString("senderId") ?: ""
+
+                        messages.add(
+                            ChatMessage(
+                                text = text,
+
+                                // If the senderId matches the current user, show
+                                // message on the right
+                                isSentByMe = senderId == currentUserId
+                            )
                         )
-                    )
+                    }
                 }
+            onDispose {
+                listenerRegistration.remove()
             }
+        }
     }
 
     Column(
@@ -230,7 +264,7 @@ fun MessagesScreen() {
                             val messageData = hashMapOf(
                                 "text" to messageText.value,
                                 "senderId" to currentUserId,
-                                "timestamp" to System.currentTimeMillis()
+                                "timestamp" to FieldValue.serverTimestamp()
                             )
 
                             // Send to Firebase
@@ -238,13 +272,13 @@ fun MessagesScreen() {
                                 .add(messageData)
                                 .addOnSuccessListener {
                                     Log.d("FIREBASE", "Message sent successfully!")
+
+                                    // Clears text field after sending message
+                                    messageText.value = ""
                                 }
                                 .addOnFailureListener { e ->
                                     Log.e("FIREBASE", "Error sending message", e)
                                 }
-
-                            // Clear the text box after sending
-                            messageText.value = ""
                         }
                     },
                     modifier = Modifier.align(Alignment.End)
@@ -260,7 +294,7 @@ fun MessagesScreen() {
 
 // Preview always at the bottom for cleaner readability
 @Composable
-@Preview(showBackground = true, showSystemUi = true)
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 fun HomeScreenPreview() {
     EkhoGoTheme {
         HomeScreen()

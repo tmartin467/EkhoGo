@@ -1,6 +1,9 @@
 # EkhoGo
 =======
 Repository for Spring 2026 COMP 350 to work on the EkhoGo app.
- Chris Henrandez
- Jude Segundera
 
+Adair Montelongo
+Tahja Martin
+Kristopher Arakelyan
+Chris Hernandez
+Jude Segundera

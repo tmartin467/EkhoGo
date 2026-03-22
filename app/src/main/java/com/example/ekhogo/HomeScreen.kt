@@ -1,5 +1,6 @@
 package com.example.ekhogo
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +38,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ekhogo.ui.theme.EkhoGoTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +109,50 @@ fun MessagesScreen() {
 
     // The stores all the messages that have been sent
     val messages = remember { mutableStateListOf<ChatMessage>() }
+
+    // Connects to Firebase Firestore database
+    val db = FirebaseFirestore.getInstance()
+
+    // Gets the currently logged-in Firebase user
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // Gets this user's unique ID
+    val currentUserId = currentUser?.uid ?: ""
+
+    // Listen for messages from Firestore in real time
+    LaunchedEffect(Unit) {
+        db.collection("messages")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+
+                // Stop if Firestore gives an error
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+
+                // Clear old messages before reloading the newest list
+                messages.clear()
+
+                // Read each Firebase document and turn it into
+                // a ChatMessage
+                snapshot?.documents?.forEach { document ->
+                    val text = document.getString("text") ?: ""
+
+                    // Read the sender's user ID from Firestore
+                    val senderId = document.getString("senderId") ?: ""
+
+                    messages.add(
+                        ChatMessage(
+                            text = text,
+
+                            // If the senderId matches the current user, show
+                            // message on the right
+                            isSentByMe = senderId == currentUserId
+                        )
+                    )
+                }
+            }
+    }
 
     Column(
         modifier = Modifier
@@ -177,21 +226,23 @@ fun MessagesScreen() {
                         // Only send if the text box is NOT empty
                         if (messageText.value.isNotBlank()) {
 
-                            // Add my message on the right
-                            messages.add(
-                                ChatMessage(
-                                    text = messageText.value,
-                                    isSentByMe = true
-                                )
+                            // Create message data for Firestore
+                            val messageData = hashMapOf(
+                                "text" to messageText.value,
+                                "senderId" to currentUserId,
+                                "timestamp" to System.currentTimeMillis()
                             )
 
-                            // Adding a fake reply on the left
-                            messages.add(
-                                ChatMessage(
-                                    text = "This is a test reply!",
-                                    isSentByMe = false
-                                )
-                            )
+                            // Send to Firebase
+                            db.collection("messages")
+                                .add(messageData)
+                                .addOnSuccessListener {
+                                    Log.d("FIREBASE", "Message sent successfully!")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("FIREBASE", "Error sending message", e)
+                                }
+
                             // Clear the text box after sending
                             messageText.value = ""
                         }

@@ -6,11 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.ekhogo"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.ekhogo"
@@ -20,6 +16,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["MAPS_API_KEY"] = findProperty("MAPS_API_KEY")?.toString() ?: ""
     }
 
     buildTypes {
@@ -52,6 +49,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.material.icons.extended)
+    implementation("com.google.maps.android:maps-compose:6.12.2")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

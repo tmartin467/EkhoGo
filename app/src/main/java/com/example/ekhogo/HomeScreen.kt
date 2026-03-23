@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,7 +69,13 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 NavigationBarItem(
                     selected = selectedTab.intValue == 2,
                     onClick = { selectedTab.intValue = 2 },
-                    icon = { Icon(Icons.Default.Email, contentDescription = "Messaging") },
+                    icon = { Icon(Icons.Default.Place, contentDescription = "Map") },
+                    label = { Text("Map") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab.intValue == 3,
+                    onClick = { selectedTab.intValue = 3 },
+                    icon = { Icon(Icons.Default.Email, contentDescription = "Messages") },
                     label = { Text("Messages") }
                 )
             }
@@ -88,8 +95,11 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 // If Friends is selected
                 1 -> Text("Friends screen")
 
+                // If Maps is selected
+                2 -> CampusMap()
+
                 // If Messages is selected
-                2 -> MessagesScreen()
+                3 -> MessagesScreen()
             }
         }
     }

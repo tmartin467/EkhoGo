@@ -73,7 +73,7 @@ fun HomeScreen( modifier: Modifier = Modifier) {
         ) {
             when (selectedTab.intValue) {
                 0 -> {
-                    Text("Map will go here")
+                    CampusMap()
                 }
                 1 -> {
                     FriendsScreen()

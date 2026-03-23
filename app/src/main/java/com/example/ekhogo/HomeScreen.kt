@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.sizeIn
 import com.example.ekhogo.ui.theme.EkhoGoTheme
+import com.example.ekhogo.friends.FriendsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +71,17 @@ fun HomeScreen( modifier: Modifier = Modifier) {
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ) {
-            Text("Will add map later")
+            when (selectedTab.intValue) {
+                0 -> {
+                    Text("Map will go here")
+                }
+                1 -> {
+                    FriendsScreen()
+                }
+                2 -> {
+                    Text("Messaging/Profile coming soon")
+                }
+            }
         }
     }
 }

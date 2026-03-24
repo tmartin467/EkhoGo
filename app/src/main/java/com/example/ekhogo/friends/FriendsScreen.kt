@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+// Represents the different tabs in the Friends screen that's being shown
 enum class FriendsTab {
     FRIENDS,
     REQUESTS,
@@ -32,6 +33,7 @@ enum class FriendsTab {
 
 @Composable
 fun FriendsScreen() {
+    // Temporary mock data for demo purposes until login / Firebase friend data is added later
     var classmates by remember {
         mutableStateOf(
             listOf(
@@ -42,22 +44,30 @@ fun FriendsScreen() {
             )
         )
     }
-
+    // selectedTab controls which friend category is displayed
     var selectedTab by remember { mutableStateOf(FriendsTab.FRIENDS) }
+    // searchText is used when clicking on the add friend tab to search for a user
     var searchText by remember { mutableStateOf("") }
 
+    // filter the full classmate list based on the selected tab
     val visibleClassmates = when (selectedTab) {
-        FriendsTab.FRIENDS -> classmates.filter { it.status == FriendStatus.FRIENDS }
-        FriendsTab.REQUESTS -> classmates.filter {
-            it.status == FriendStatus.REQUEST_RECEIVED || it.status == FriendStatus.REQUEST_SENT
+        FriendsTab.FRIENDS -> classmates.filter { currentFriend ->
+            currentFriend.status == FriendStatus.FRIENDS
         }
-        FriendsTab.ADD_FRIENDS -> classmates.filter { it.status == FriendStatus.NONE }
+        FriendsTab.REQUESTS -> classmates.filter { currentFriend ->
+            currentFriend.status == FriendStatus.REQUEST_RECEIVED ||
+                    currentFriend.status == FriendStatus.REQUEST_SENT
+        }
+        FriendsTab.ADD_FRIENDS -> classmates.filter { currentFriend ->
+            currentFriend.status == FriendStatus.NONE
+        }
     }
 
+    // search filtering inside the add friends tab
     val displayedClassmates =
         if (selectedTab == FriendsTab.ADD_FRIENDS) {
-            visibleClassmates.filter {
-                it.name.contains(searchText, ignoreCase = true)
+            visibleClassmates.filter { currentFriend ->
+                currentFriend.name.contains(searchText, ignoreCase = true)
             }
         } else {
             visibleClassmates
@@ -75,6 +85,7 @@ fun FriendsScreen() {
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Top tab buttons for switching between Friends, Requests, and Add Friends
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -122,6 +133,7 @@ fun FriendsScreen() {
             }
         }
 
+        // Search bar for add friends tab
         if (selectedTab == FriendsTab.ADD_FRIENDS) {
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -135,6 +147,7 @@ fun FriendsScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Display messages when clicking on the tab and there are no users there
         if (displayedClassmates.isEmpty()) {
             Text(
                 text = when (selectedTab) {
@@ -176,24 +189,36 @@ fun FriendsScreen() {
 
                             Button(
                                 onClick = {
-                                    classmates = classmates.map {
-                                        if (it.id == friend.id) {
-                                            when (it.status) {
-                                                FriendStatus.NONE -> it.copy(status = FriendStatus.REQUEST_SENT)
-                                                FriendStatus.REQUEST_RECEIVED -> it.copy(status = FriendStatus.FRIENDS)
-                                                FriendStatus.REQUEST_SENT -> it
-                                                FriendStatus.FRIENDS -> it.copy(status = FriendStatus.NONE)
+                                    // Update friend's status in the local UI based on the selected tab buttons
+                                    classmates = classmates.map { currentFriend ->
+
+                                        if (currentFriend.id == friend.id) {
+
+                                            when (currentFriend.status) {
+                                                FriendStatus.NONE ->
+                                                    currentFriend.copy(status = FriendStatus.REQUEST_SENT)
+
+                                                FriendStatus.REQUEST_RECEIVED ->
+                                                    currentFriend.copy(status = FriendStatus.FRIENDS)
+
+                                                FriendStatus.REQUEST_SENT ->
+                                                    currentFriend
+
+                                                FriendStatus.FRIENDS ->
+                                                    currentFriend.copy(status = FriendStatus.NONE)
                                             }
                                         } else {
-                                            it
+                                            currentFriend
                                         }
                                     }
                                 },
+                                // Button is only interactable when an action can happen
                                 enabled = friend.status == FriendStatus.NONE ||
                                         friend.status == FriendStatus.REQUEST_RECEIVED ||
                                         friend.status == FriendStatus.FRIENDS
                             ) {
                                 Text(
+                                    // Update button text based on the current relationship status
                                     when (friend.status) {
                                         FriendStatus.NONE -> "Add"
                                         FriendStatus.REQUEST_SENT -> "Pending"

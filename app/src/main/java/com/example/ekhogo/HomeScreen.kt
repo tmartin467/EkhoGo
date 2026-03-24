@@ -91,7 +91,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             when (selectedTab.intValue) {
 
                 // If Calendar is selected
-                0 -> Text("Calendar screen")
+                0 -> CalendarScreen()
 
                 // If Friends is selected
                 1 -> FriendsScreen()

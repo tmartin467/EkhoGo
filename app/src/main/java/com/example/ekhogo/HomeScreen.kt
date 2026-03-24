@@ -43,6 +43,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.example.ekhogo.friends.FriendsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +94,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 0 -> Text("Calendar screen")
 
                 // If Friends is selected
-                1 -> Text("Friends screen")
+                1 -> FriendsScreen()
+
 
                 // If Maps is selected
                 2 -> CampusMap()

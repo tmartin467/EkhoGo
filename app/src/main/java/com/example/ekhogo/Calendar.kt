@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun CalendarScreen() {
@@ -112,7 +113,7 @@ fun CalendarScreen() {
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) Color.Blue else Color.LightGray
+                                if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray
                             ),
                         contentAlignment = Alignment.Center
                     ) {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "750057211963",
+    "project_id": "ekhogo-84683",
+    "storage_bucket": "ekhogo-84683.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750057211963:android:746e64a912d7541f16f41e",
+        "android_client_info": {
+          "package_name": "com.example.ekhogo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIIJFFKzfhvqswK_X4p8JT3wDvfZ1l_98"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

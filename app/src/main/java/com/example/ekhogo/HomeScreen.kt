@@ -31,6 +31,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ekhogo.Map.CampusMap
+import com.example.ekhogo.Message.MessagesScreen
+import com.example.ekhogo.calendar.CalendarScreen
 import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.example.ekhogo.friends.FriendsScreen
 

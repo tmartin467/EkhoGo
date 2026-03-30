@@ -1,4 +1,4 @@
-package com.example.ekhogo
+package com.example.ekhogo.Message
 
 import android.util.Log
 import androidx.compose.foundation.background

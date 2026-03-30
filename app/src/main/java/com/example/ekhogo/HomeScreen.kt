@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -76,27 +77,34 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 NavigationBarItem(
                     selected = selectedTab.intValue == 0,
                     onClick = { selectedTab.intValue = 0 },
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Calendar") },
-                    label = { Text("Calendar") },
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                    label = { Text("Home") },
                     colors = navigationItemColors
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 1,
                     onClick = { selectedTab.intValue = 1 },
-                    icon = { Icon(Icons.Default.Person, contentDescription = "Friends") },
-                    label = { Text("Friends") },
+                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Calendar") },
+                    label = { Text("Calendar") },
                     colors = navigationItemColors
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 2,
                     onClick = { selectedTab.intValue = 2 },
-                    icon = { Icon(Icons.Default.Place, contentDescription = "Map") },
-                    label = { Text("Map") },
+                    icon = { Icon(Icons.Default.Person, contentDescription = "Friends") },
+                    label = { Text("Friends") },
                     colors = navigationItemColors
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 3,
                     onClick = { selectedTab.intValue = 3 },
+                    icon = { Icon(Icons.Default.Place, contentDescription = "Map") },
+                    label = { Text("Map") },
+                    colors = navigationItemColors
+                )
+                NavigationBarItem(
+                    selected = selectedTab.intValue == 4,
+                    onClick = { selectedTab.intValue = 4 },
                     icon = { Icon(Icons.Default.Email, contentDescription = "Messages") },
                     label = { Text("Messages") },
                     colors = navigationItemColors
@@ -112,18 +120,24 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             // Check which tab is selected
             when (selectedTab.intValue) {
 
+                // If Home button is selected
+                0 -> HomeButton(onNavigate = { selectedTab.intValue = it })
+
                 // If Calendar is selected
-                0 -> CalendarScreen()
+                1 -> CalendarScreen()
 
                 // If Friends is selected
-                1 -> FriendsScreen()
+                2 -> FriendsScreen()
 
 
                 // If Maps is selected
-                2 -> CampusMap()
+                3 -> CampusMap()
 
                 // If Messages is selected
-                3 -> MessagesScreen()
+                4 -> MessagesScreen()
+
+                // If Schedule button on homescreen is selected
+                5 -> Schedule()
             }
         }
     }

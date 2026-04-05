@@ -15,6 +15,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -24,7 +27,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,10 +44,12 @@ import com.example.ekhogo.calendar.CalendarScreen
 import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.example.ekhogo.friends.FriendsScreen
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
     val selectedTab = remember { mutableIntStateOf(0) }
+    var expandedMenu by remember { mutableStateOf(false) } // Variable that tracks whether the dropdown menu is open or not
     val navigationItemColors = NavigationBarItemDefaults.colors(
         selectedIconColor = Color.White,
         selectedTextColor = Color.White,
@@ -65,6 +73,35 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.size(70.dp)
                         )
                         Text("EkhoGo", fontSize = 36.sp)
+                    }
+                },
+                actions = {
+                    Box {
+                        // Profile Icon on the top right of the screen
+                        IconButton(onClick = { expandedMenu = true}) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile menu",
+                                tint = Color.White
+                            )
+                        }
+                        // Dropdown menu for the profile icon
+                        DropdownMenu(
+                            expanded = expandedMenu,
+                            onDismissRequest = { expandedMenu = false }
+                        ) {
+                            // Placeholder for when editing profile is implemented
+                            DropdownMenuItem(
+                                text = { Text("View Profile") },
+                                onClick = { expandedMenu = false })
+                            // Logout button and returns to the login screen
+                            DropdownMenuItem(
+                                text = { Text("Logout") },
+                                onClick = { expandedMenu = false
+                                    onAccountLogout()
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -151,6 +188,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 fun HomeScreenPreview() {
     EkhoGoTheme {
-        HomeScreen()
+        HomeScreen(onAccountLogout = {})
     }
 }

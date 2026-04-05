@@ -19,6 +19,7 @@ import com.example.ekhogo.ui.theme.EkhoGoTheme
 import androidx.compose.runtime.*
 import com.example.ekhogo.login.RegisterScreen
 import com.example.ekhogo.login.LoginScreen
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +27,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             EkhoGoTheme {
-                var currentScreen by remember {mutableStateOf("login")}
+                var currentScreen by remember {mutableStateOf("login")} //tracks which screen is being shown and starts with login
 
                 when (currentScreen) {
                     "register" -> RegisterScreen(
@@ -39,7 +40,11 @@ class MainActivity : ComponentActivity() {
                         onGoToRegister = { currentScreen = "register" }
                     )
 
-                    "home" -> HomeScreen()
+                    "home" -> HomeScreen(
+                        onAccountLogout = { // when logout is pressed
+                            FirebaseAuth.getInstance().signOut() // Firebase sign out and goes to the login screen
+                            currentScreen = "login" }
+                    )
                 }
             }
         }

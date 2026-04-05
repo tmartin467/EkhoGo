@@ -1,4 +1,4 @@
-package com.example.ekhogo.calendar
+package com.example.ekhogo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,8 +20,8 @@ import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 
 @Composable
@@ -51,9 +51,9 @@ fun CalendarScreen() {
         ) {
             Button(
                 onClick = { currentWeekStart = currentWeekStart.minusWeeks(1) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.Black
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = androidx.compose.ui.graphics.Color.Black
                 ),
                 elevation = null
             ) {
@@ -62,8 +62,8 @@ fun CalendarScreen() {
 
             Text(
                 text = "${currentWeekStart.month.getDisplayName(
-                    TextStyle.FULL,
-                    Locale.getDefault()
+                    java.time.format.TextStyle.FULL,
+                    java.util.Locale.getDefault()
                 )} ${currentWeekStart.year}", fontSize = 30.sp,
                 modifier = Modifier.padding(top = 6.dp)
 
@@ -72,9 +72,9 @@ fun CalendarScreen() {
 
             Button(
                 onClick = { currentWeekStart = currentWeekStart.plusWeeks(1) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.Black
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = androidx.compose.ui.graphics.Color.Black
                 ),
                 elevation = null
             ) {

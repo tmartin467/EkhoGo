@@ -1,5 +1,4 @@
 package com.example.ekhogo
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,8 +12,13 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -24,7 +28,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,16 +40,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ekhogo.Map.CampusMap
-import com.example.ekhogo.Message.MessagesScreen
+import com.example.ekhogo.map.CampusMap
+import com.example.ekhogo.message.MessagesScreen
 import com.example.ekhogo.calendar.CalendarScreen
 import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.example.ekhogo.friends.FriendsScreen
+import com.example.ekhogo.message.MessagesViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
     val selectedTab = remember { mutableIntStateOf(0) }
+    val messagesViewModel: MessagesViewModel = viewModel()
+    val unreadCount by messagesViewModel.unreadCount.collectAsState()
+    var expandedMenu by remember { mutableStateOf(false) } // Variable that tracks whether the dropdown menu is open or not
     val navigationItemColors = NavigationBarItemDefaults.colors(
         selectedIconColor = Color.White,
         selectedTextColor = Color.White,
@@ -67,7 +81,36 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                         Text("EkhoGo", fontSize = 36.sp)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                actions = {
+                    Box {
+                        // Profile Icon on the top right of the screen
+                        IconButton(onClick = { expandedMenu = true}) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile menu",
+                                tint = Color.White
+                            )
+                        }
+                        // Dropdown menu for the profile icon
+                        DropdownMenu(
+                            expanded = expandedMenu,
+                            onDismissRequest = { expandedMenu = false }
+                        ) {
+                            // Placeholder for when editing profile is implemented
+                            DropdownMenuItem(
+                                text = { Text("View Profile") },
+                                onClick = { expandedMenu = false })
+                            // Logout button and returns to the login screen
+                            DropdownMenuItem(
+                                text = { Text("Logout") },
+                                onClick = { expandedMenu = false
+                                    onAccountLogout()
+                                }
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
                 )
@@ -108,7 +151,24 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 NavigationBarItem(
                     selected = selectedTab.intValue == 4,
                     onClick = { selectedTab.intValue = 4 },
-                    icon = { Icon(Icons.Default.Email, contentDescription = "Messages") },
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (unreadCount > 0) {
+                                    Badge(
+                                        containerColor = Color.White,
+                                        contentColor = Color(0xFFB3261E)
+                                    ) {
+                                        Text(
+                                            text = if (unreadCount > 99) "99+" else unreadCount.toString()
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Email, contentDescription = "Messages")
+                        }
+                    },
                     label = { Text("Messages") },
                     colors = navigationItemColors
                 )
@@ -137,7 +197,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 3 -> CampusMap()
 
                 // If Messages is selected
-                4 -> MessagesScreen()
+                4 -> MessagesScreen(viewModel = messagesViewModel)
 
                 // If Schedule button on homescreen is selected
                 5 -> Schedule()
@@ -151,6 +211,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 fun HomeScreenPreview() {
     EkhoGoTheme {
-        HomeScreen()
+        HomeScreen(onAccountLogout = {})
     }
 }

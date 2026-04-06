@@ -54,7 +54,6 @@ fun HomeButton(onNavigate: (Int) -> Unit) {
             {
             Text("Weekly Schedule placeholder")
             }
-
     }
 
 

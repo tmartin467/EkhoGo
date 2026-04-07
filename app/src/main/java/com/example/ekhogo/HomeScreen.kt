@@ -47,6 +47,7 @@ import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.example.ekhogo.friends.FriendsScreen
 import com.example.ekhogo.message.MessagesViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ekhogo.schedule.Schedule
 
 
 @OptIn(ExperimentalMaterial3Api::class)

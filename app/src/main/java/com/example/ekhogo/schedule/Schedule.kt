@@ -8,32 +8,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
 fun Schedule(scheduleList: List<ClassSchedule>) {
 
-    val weeklySchedule = scheduleList.filter { it.isWeekly }
+    val todaySchedule = scheduleList.filter { !it.isTodo }
+    val todoSchedule = scheduleList.filter { it.isTodo }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
+            .padding(16.dp)
     ) {
 
         // Today's Schedule
         Text(
-            text = "Today's Schedule",
-            fontSize = 22.sp
+            text = "Today's Class Schedule",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (scheduleList.isEmpty()) {
+        if (todaySchedule.isEmpty()) {
             Text("No classes scheduled today")
         } else {
-            scheduleList.forEach { item ->
+            todaySchedule.forEach { item ->
                 Text("• ${item.name} - ${item.time}")
                 Text("  ${item.location}")
                 Spacer(modifier = Modifier.height(6.dp))
@@ -44,19 +47,20 @@ fun Schedule(scheduleList: List<ClassSchedule>) {
 
         // Weekly Schedule
         Text(
-            text = "Weekly Schedule",
-            fontSize = 22.sp
+            text = "To-Do Schedule",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (weeklySchedule.isEmpty()) {
-            Text("No weekly classes yet")
+        if (todoSchedule.isEmpty()) {
+            Text("No To-Do items yet")
         } else {
-            weeklySchedule.forEach { item ->
+            todoSchedule.forEach { item ->
                 Text("• ${item.name} - ${item.time}")
-                Text("  ${item.location}")
-                Spacer(modifier = Modifier.height(6.dp))
+                Text("   ${item.location}")
+                Spacer(modifier = Modifier.height(10.dp))
             }
         }
     }

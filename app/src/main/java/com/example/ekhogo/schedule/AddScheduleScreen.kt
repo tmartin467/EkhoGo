@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -25,10 +26,9 @@ fun AddScheduleScreen(
     onSave: (ClassSchedule) -> Unit
 ) {
     var className by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var isWeekly by remember { mutableStateOf(false) }
+    var isTodo by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -43,17 +43,8 @@ fun AddScheduleScreen(
         OutlinedTextField(
             value = className,
             onValueChange = { className = it },
-            label = { Text("Class Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = date,
-            onValueChange = { date = it },
-            label = { Text("Date") },
-            placeholder = { Text("04/10/2026") },
+            label = { Text("Class Name or To-Do") },
+            placeholder = { Text("COMP 350/Study") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -63,7 +54,7 @@ fun AddScheduleScreen(
             value = time,
             onValueChange = { time = it },
             label = { Text("Time") },
-            placeholder = { Text("2:00 PM") },
+            placeholder = { Text("10:00 am") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -73,17 +64,20 @@ fun AddScheduleScreen(
             value = location,
             onValueChange = { location = it },
             label = { Text("Location") },
+            placeholder = { Text("SIE 2411/Library") },
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Checkbox(
-                checked = isWeekly,
-                onCheckedChange = { isWeekly = it }
+                checked = isTodo,
+                onCheckedChange = { isTodo = it }
             )
-            Text("Weekly")
+            Text("Add as To-Do Item")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -92,17 +86,15 @@ fun AddScheduleScreen(
             onClick = {
                 if (
                     className.isNotBlank() &&
-                    date.isNotBlank() &&
                     time.isNotBlank() &&
                     location.isNotBlank()
                 ) {
                     onSave(
                         ClassSchedule(
                             name = className,
-                            date = date,
                             time = time,
                             location = location,
-                            isWeekly = isWeekly
+                            isTodo = isTodo
                         )
                     )
                 }

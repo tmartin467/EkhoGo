@@ -1,4 +1,4 @@
-package com.example.ekhogo
+package com.example.ekhogo.map
 
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize

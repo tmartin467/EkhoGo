@@ -26,9 +26,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -37,36 +37,16 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun Schedule() {
 
     val classes = remember { mutableStateOf("") }
+    val location = remember {mutableStateOf("")}
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
     ) {
+
         val scheduleList = remember { mutableStateListOf<Map<String, Any>>() }
 
 
-        LaunchedEffect(Unit) {
-            val user = FirebaseAuth.getInstance().currentUser
-            val uid = user?.uid
-            val db = FirebaseFirestore.getInstance()
-
-            if (uid != null) {
-                db.collection("users")
-                    .document(uid)
-                    .collection("classes")
-                    .addSnapshotListener { result, error ->
-
-                        if (error != null) return@addSnapshotListener
-
-                        if (result != null) {
-                            scheduleList.clear()
-                            for (doc in result) {
-                                scheduleList.add(doc.data)
-                            }
-                        }
-                    }
-            }
-        }
-
+        ViewSchedule(scheduleList)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -80,10 +60,19 @@ fun Schedule() {
         OutlinedTextField(
             value = classes.value,
             onValueChange = { classes.value = it },
-            label = { Text("Enter an enrolled class") },
+            label = { Text("Enter enrolled class") },
             maxLines = 5,
             modifier = Modifier.fillMaxWidth()
         )
+
+        OutlinedTextField(
+            value = location.value,
+            onValueChange = { location.value = it },
+            label = { Text("Enter class location") },
+            maxLines = 5,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         val startTime = listOf(
             "Start Time",
             "8 AM",
@@ -121,6 +110,10 @@ fun Schedule() {
         )
         var expandedEnd by remember { mutableStateOf(false) }
         var selectedEnd by remember { mutableStateOf(endTime[0]) }
+
+        val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri")
+        var expanded by remember { mutableStateOf(false) }
+        var selectedDays by remember { mutableStateOf(setOf<String>()) }
 
         Row(
             modifier = Modifier
@@ -176,66 +169,61 @@ fun Schedule() {
                     )
                 }
             }
-        }
+/*
+            val displayText = if (selectedDays.isEmpty()) {
+                "Select days"
+            } else {
+                selectedDays.joinToString(", ")
+            }
+*/
 
-    val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri")
+            Text(
+                text = "Select Days",
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { expanded = true }
+                    .padding(16.dp)
+                    //.background(Color.LightGray, shape = RoundedCornerShape(8.dp))
 
-    var expanded by remember { mutableStateOf(false) }
-    var selectedDays by remember { mutableStateOf(setOf<String>()) }
+            )
 
-    val displayText = if (selectedDays.isEmpty()) {
-        "Select days"
-    } else {
-        selectedDays.joinToString(", ")
-    }
-
-
-        Text(
-            text = displayText,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true }
-                .padding(16.dp)
-                .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
-                .padding(16.dp)
-        )
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            daysOfWeek.forEach { day ->
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = selectedDays.contains(day),
-                                onCheckedChange = { isChecked ->
-                                    selectedDays = if (isChecked) {
-                                        selectedDays + day
-                                    } else {
-                                        selectedDays - day
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                daysOfWeek.forEach { day ->
+                    DropdownMenuItem(
+                        text = {
+                            Row() {
+                                Checkbox(
+                                    checked = selectedDays.contains(day),
+                                    onCheckedChange = { isChecked ->
+                                        selectedDays = if (isChecked) {
+                                            selectedDays + day
+                                        } else {
+                                            selectedDays - day
+                                        }
                                     }
-                                }
-                            )
-                            Text(day)
+                                )
+                                Text(day)
+                            }
+                        },
+                        onClick = {
+                            selectedDays = if (selectedDays.contains(day)) {
+                                selectedDays - day
+                            } else {
+                                selectedDays + day
+                            }
                         }
-                    },
-                    onClick = {
-                        selectedDays = if (selectedDays.contains(day)) {
-                            selectedDays - day
-                        } else {
-                            selectedDays + day
-                        }
-                    }
-                )
+                    )
+                }
             }
         }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 20.dp)
+                .padding(vertical = 4.dp)
 
         )
         {
@@ -247,6 +235,7 @@ fun Schedule() {
 
                 val classData = hashMapOf(
                     "className" to classes.value,
+                    "locationName" to location.value,
                     "startTime" to selectedStart,
                     "endTime" to selectedEnd,
                     "days" to selectedDays.toList()
@@ -260,7 +249,7 @@ fun Schedule() {
                 }
 
             },
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 2.dp)
             ) {
                 Text("Add Class")
             }
@@ -276,12 +265,13 @@ fun Schedule() {
         scheduleList.forEach { item ->
 
                 val className = item["className"] as? String ?: ""
+                val locationName = item["locationName"] as? String ?: ""
                 val start = item["startTime"] as? String ?: ""
                 val end = item["endTime"] as? String ?: ""
                 val days = item["days"] as? List<*> ?: emptyList<Any>()
 
                 Text(
-                    text = "$className: $start - $end (${days.joinToString(", ")})",
+                    text = "  $className in $locationName: $start - $end (${days.joinToString(", ")})",
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
         }

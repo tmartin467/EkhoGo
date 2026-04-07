@@ -36,7 +36,7 @@ fun AddScheduleScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.Top
     ) {
-        Text("Create Class Schedule or a To-Do list")
+        Text("Create Class Schedule or a To-Do list!")
 
         Spacer(modifier = Modifier.height(16.dp))
 

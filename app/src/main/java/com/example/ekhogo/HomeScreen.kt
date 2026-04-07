@@ -2,8 +2,11 @@ package com.example.ekhogo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -32,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,6 +51,9 @@ import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.example.ekhogo.friends.FriendsScreen
 import com.example.ekhogo.message.MessagesViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ekhogo.ToDo.ToDoClass
+import com.example.ekhogo.ToDo.ToDoHomePage
+import com.example.ekhogo.ToDo.ToDoScreen
 import com.example.ekhogo.schedule.Schedule
 
 
@@ -55,6 +62,7 @@ import com.example.ekhogo.schedule.Schedule
 fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
     val selectedTab = remember { mutableIntStateOf(0) }
     val messagesViewModel: MessagesViewModel = viewModel()
+    val ToDoList = remember { mutableStateListOf<ToDoClass>() }
     val unreadCount by messagesViewModel.unreadCount.collectAsState()
     var expandedMenu by remember { mutableStateOf(false) } // Variable that tracks whether the dropdown menu is open or not
     val navigationItemColors = NavigationBarItemDefaults.colors(
@@ -185,7 +193,18 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
             when (selectedTab.intValue) {
 
                 // If Home button is selected
-                0 -> HomeButton(onNavigate = { selectedTab.intValue = it })
+                //0 -> HomeButton(onNavigate = { selectedTab.intValue = it })
+                0 -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    HomeButton(onNavigate = { selectedTab.intValue = it },
+                        toDoList = ToDoList
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ToDoHomePage(ToDoList = ToDoList)
+                }
 
                 // If Calendar is selected
                 1 -> CalendarScreen()
@@ -202,12 +221,20 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
 
                 // If Schedule button on homescreen is selected
                 5 -> Schedule()
+
+                // If ToDo button on homescreen is selected
+                6 -> ToDoScreen( onSave = { newSchedule ->
+                    ToDoList.add(newSchedule)
+                    selectedTab.intValue = 0
             }
+                )
         }
     }
 }
+}
 
 // Preview always at the bottom for cleaner readability
+    /*
 @Composable
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 fun HomeScreenPreview() {
@@ -215,3 +242,4 @@ fun HomeScreenPreview() {
         HomeScreen(onAccountLogout = {})
     }
 }
+*/

@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import com.example.ekhogo.login.RegisterScreen
 import com.example.ekhogo.login.LoginScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.example.ekhogo.profile.ProfileScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,7 +44,12 @@ class MainActivity : ComponentActivity() {
                     "home" -> HomeScreen(
                         onAccountLogout = { // when logout is pressed
                             FirebaseAuth.getInstance().signOut() // Firebase sign out and goes to the login screen
-                            currentScreen = "login" }
+                            currentScreen = "login" },
+                        toProfileScreen = { currentScreen = "profile" }
+                    )
+
+                    "profile" -> ProfileScreen(
+                        toHomeScreen = { currentScreen = "home" }
                     )
                 }
             }

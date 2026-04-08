@@ -61,7 +61,7 @@ import com.example.ekhogo.ui.theme.EkhoGoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
+fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit, toProfileScreen: () -> Unit) {
     val selectedTab = remember { mutableIntStateOf(0) }
     val messagesViewModel: MessagesViewModel = viewModel()
     val ToDoList = remember { mutableStateListOf<ToDoClass>() }
@@ -110,7 +110,8 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
                             // Placeholder for when editing profile is implemented
                             DropdownMenuItem(
                                 text = { Text("View Profile") },
-                                onClick = { expandedMenu = false })
+                                onClick = { expandedMenu = false
+                                            toProfileScreen()})
                             // Logout button and returns to the login screen
                             DropdownMenuItem(
                                 text = { Text("Logout") },
@@ -241,7 +242,7 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 fun HomeScreenPreview() {
     EkhoGoTheme {
-        HomeScreen(onAccountLogout = {})
+        HomeScreen(onAccountLogout = {}, toProfileScreen = {})
     }
 }
 */

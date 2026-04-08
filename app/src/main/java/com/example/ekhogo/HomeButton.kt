@@ -9,29 +9,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ekhogo.ToDo.ToDoClass
 import com.example.ekhogo.ToDo.ToDoHomePage
 import com.example.ekhogo.schedule.ViewSchedule
-import com.example.ekhogo.ui.theme.EkhoGoTheme
-import kotlin.collections.set
 
 
 @Composable
-fun HomeButton(onNavigate: (Int) -> Unit,
-               toDoList: List<ToDoClass>
+fun HomeButton(
+    onNavigate: (Int) -> Unit,
+    toDoList: List<ToDoClass>
 ) {
 
     val scheduleList = remember { mutableStateListOf<Map<String, Any>>() }
@@ -53,8 +52,11 @@ fun HomeButton(onNavigate: (Int) -> Unit,
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Top,) {
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Top,
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,7 +86,8 @@ fun HomeButton(onNavigate: (Int) -> Unit,
         )
         {
             if (todaySchedule.isEmpty()) {
-                Text(text = "  No classes are scheduled for today",
+                Text(
+                    text = "  No classes are scheduled for today",
                     fontSize = 20.sp,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )

@@ -1,4 +1,5 @@
 package com.example.ekhogo
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,11 +19,11 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,28 +34,29 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ekhogo.map.CampusMap
-import com.example.ekhogo.message.MessagesScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ekhogo.calendar.CalendarScreen
-import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.example.ekhogo.friends.FriendsScreen
+import com.example.ekhogo.map.CampusMapScreen
+import com.example.ekhogo.message.MessagesScreen
 import com.example.ekhogo.message.MessagesViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ekhogo.ToDo.ToDoClass
 import com.example.ekhogo.ToDo.ToDoHomePage
 import com.example.ekhogo.ToDo.ToDoScreen
 import com.example.ekhogo.schedule.Schedule
+import com.example.ekhogo.ui.theme.EkhoGoTheme
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +95,7 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
                 actions = {
                     Box {
                         // Profile Icon on the top right of the screen
-                        IconButton(onClick = { expandedMenu = true}) {
+                        IconButton(onClick = { expandedMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "Profile menu",
@@ -112,7 +114,8 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
                             // Logout button and returns to the login screen
                             DropdownMenuItem(
                                 text = { Text("Logout") },
-                                onClick = { expandedMenu = false
+                                onClick = {
+                                    expandedMenu = false
                                     onAccountLogout()
                                 }
                             )
@@ -212,9 +215,8 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit) {
                 // If Friends is selected
                 2 -> FriendsScreen()
 
-
                 // If Maps is selected
-                3 -> CampusMap()
+                3 -> CampusMapScreen()
 
                 // If Messages is selected
                 4 -> MessagesScreen(viewModel = messagesViewModel)

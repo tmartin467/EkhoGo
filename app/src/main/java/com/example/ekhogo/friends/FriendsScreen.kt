@@ -49,15 +49,20 @@ fun FriendsScreen() {
     // searchText is used when clicking on the add friend tab to search for a user
     var searchText by remember { mutableStateOf("") }
 
+    // Connecting to the database
+    val repository = FriendsRepository()
+
     // filter the full classmate list based on the selected tab
     val visibleClassmates = when (selectedTab) {
         FriendsTab.FRIENDS -> classmates.filter { currentFriend ->
             currentFriend.status == FriendStatus.FRIENDS
         }
+
         FriendsTab.REQUESTS -> classmates.filter { currentFriend ->
             currentFriend.status == FriendStatus.REQUEST_RECEIVED ||
                     currentFriend.status == FriendStatus.REQUEST_SENT
         }
+
         FriendsTab.ADD_FRIENDS -> classmates.filter { currentFriend ->
             currentFriend.status == FriendStatus.NONE
         }
@@ -189,24 +194,30 @@ fun FriendsScreen() {
 
                             Button(
                                 onClick = {
-                                    // Update friend's status in the local UI based on the selected tab buttons
                                     classmates = classmates.map { currentFriend ->
 
                                         if (currentFriend.id == friend.id) {
 
                                             when (currentFriend.status) {
-                                                FriendStatus.NONE ->
+
+                                                FriendStatus.NONE -> {
+                                                    repository.sendFriendRequest(currentFriend.id)
                                                     currentFriend.copy(status = FriendStatus.REQUEST_SENT)
+                                                }
 
-                                                FriendStatus.REQUEST_RECEIVED ->
+                                                FriendStatus.REQUEST_RECEIVED -> {
                                                     currentFriend.copy(status = FriendStatus.FRIENDS)
+                                                }
 
-                                                FriendStatus.REQUEST_SENT ->
+                                                FriendStatus.REQUEST_SENT -> {
                                                     currentFriend
+                                                }
 
-                                                FriendStatus.FRIENDS ->
+                                                FriendStatus.FRIENDS -> {
                                                     currentFriend.copy(status = FriendStatus.NONE)
+                                                }
                                             }
+
                                         } else {
                                             currentFriend
                                         }

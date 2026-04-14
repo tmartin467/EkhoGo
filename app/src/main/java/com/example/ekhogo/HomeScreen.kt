@@ -46,22 +46,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ekhogo.calendar.CalendarScreen
+import com.example.ekhogo.ToDo.ToDoClass
+import com.example.ekhogo.ToDo.ToDoHomePage
+import com.example.ekhogo.ToDo.ToDoScreen
 import com.example.ekhogo.friends.FriendsScreen
 import com.example.ekhogo.map.CampusMapScreen
 import com.example.ekhogo.message.MessagesScreen
 import com.example.ekhogo.message.MessagesViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ekhogo.ToDo.ToDoClass
-import com.example.ekhogo.ToDo.ToDoHomePage
-import com.example.ekhogo.ToDo.ToDoScreen
 import com.example.ekhogo.schedule.Schedule
-import com.example.ekhogo.ui.theme.EkhoGoTheme
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit, toProfileScreen: () -> Unit) {
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    onAccountLogout: () -> Unit,
+    toProfileScreen: () -> Unit
+) {
     val selectedTab = remember { mutableIntStateOf(0) }
     val messagesViewModel: MessagesViewModel = viewModel()
     val ToDoList = remember { mutableStateListOf<ToDoClass>() }
@@ -110,8 +111,10 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit, toPro
                             // Placeholder for when editing profile is implemented
                             DropdownMenuItem(
                                 text = { Text("View Profile") },
-                                onClick = { expandedMenu = false
-                                            toProfileScreen()})
+                                onClick = {
+                                    expandedMenu = false
+                                    toProfileScreen()
+                                })
                             // Logout button and returns to the login screen
                             DropdownMenuItem(
                                 text = { Text("Logout") },
@@ -203,7 +206,8 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit, toPro
                         .fillMaxSize()
                         .padding(16.dp)
                 ) {
-                    HomeButton(onNavigate = { selectedTab.intValue = it },
+                    HomeButton(
+                        onNavigate = { selectedTab.intValue = it },
                         toDoList = ToDoList
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -226,23 +230,23 @@ fun HomeScreen(modifier: Modifier = Modifier, onAccountLogout: () -> Unit, toPro
                 5 -> Schedule()
 
                 // If ToDo button on homescreen is selected
-                6 -> ToDoScreen( onSave = { newSchedule ->
+                6 -> ToDoScreen(onSave = { newSchedule ->
                     ToDoList.add(newSchedule)
                     selectedTab.intValue = 0
-            }
+                }
                 )
+            }
         }
     }
 }
-}
 
 // Preview always at the bottom for cleaner readability
-    /*
+/*
 @Composable
 @androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 fun HomeScreenPreview() {
-    EkhoGoTheme {
-        HomeScreen(onAccountLogout = {}, toProfileScreen = {})
-    }
+EkhoGoTheme {
+    HomeScreen(onAccountLogout = {}, toProfileScreen = {})
+}
 }
 */

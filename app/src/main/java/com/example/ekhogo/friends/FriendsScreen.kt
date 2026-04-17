@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,12 @@ fun FriendsScreen() {
 
     // Connecting to the database
     val repository = FriendsRepository()
+
+    LaunchedEffect(Unit) {
+        repository.loadUsers { users ->
+            classmates = users
+        }
+    }
 
     // filter the full classmate list based on the selected tab
     val visibleClassmates = when (selectedTab) {

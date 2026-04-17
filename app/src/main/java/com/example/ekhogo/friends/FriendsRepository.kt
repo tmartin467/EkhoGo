@@ -35,7 +35,31 @@ class FriendsRepository {
     ) {
         val currentUserId = auth.currentUser?.uid ?: return
 
-        db.collection
-    }
+        db.collection("users")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val users = snapshot.documents.mapNotNull { document ->
+                    val uid = document.getString("uid") ?: document.id
+                    val name = document.getString("name") ?: return@mapNotNull null
+                    val major = document.getString("major") ?: ""
 
+                    if (uid == currentUserId) {
+                        null
+                    } else {
+                        Friend(
+                            id = uid,
+                            name = name,
+                            major = major,
+                            status = FriendStatus.NONE
+                        )
+                    }
+                }
+
+                onResult(users)
+            }
+            .addOnFailureListener { e ->
+                Log.e("FRIENDS", "Error loading users", e)
+                onResult(emptyList())
+            }
+    }
 }

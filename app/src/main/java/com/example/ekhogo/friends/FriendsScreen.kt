@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.ekhogo.message.MessagesViewModel
 
 // Represents the different tabs in the Friends screen that's being shown
 enum class FriendsTab {
@@ -33,7 +34,10 @@ enum class FriendsTab {
 }
 
 @Composable
-fun FriendsScreen() {
+fun FriendsScreen(
+    viewModel: MessagesViewModel,
+    onNavigateToMessages: () -> Unit
+) {
     // Temporary mock data for demo purposes until login / Firebase friend data is added later
     var classmates by remember {
         mutableStateOf(
@@ -199,52 +203,64 @@ fun FriendsScreen() {
                                 )
                             }
 
-                            Button(
-                                onClick = {
-                                    classmates = classmates.map { currentFriend ->
+                            Column {
+                                Button(
+                                    onClick = {
+                                        classmates = classmates.map { currentFriend ->
 
-                                        if (currentFriend.id == friend.id) {
+                                            if (currentFriend.id == friend.id) {
 
-                                            when (currentFriend.status) {
+                                                when (currentFriend.status) {
 
-                                                FriendStatus.NONE -> {
-                                                    repository.sendFriendRequest(currentFriend.id)
-                                                    currentFriend.copy(status = FriendStatus.REQUEST_SENT)
+                                                    FriendStatus.NONE -> {
+                                                        repository.sendFriendRequest(currentFriend.id)
+                                                        currentFriend.copy(status = FriendStatus.REQUEST_SENT)
+                                                    }
+
+                                                    FriendStatus.REQUEST_RECEIVED -> {
+                                                        currentFriend.copy(status = FriendStatus.FRIENDS)
+                                                    }
+
+                                                    FriendStatus.REQUEST_SENT -> {
+                                                        currentFriend
+                                                    }
+
+                                                    FriendStatus.FRIENDS -> {
+                                                        currentFriend.copy(status = FriendStatus.NONE)
+                                                    }
                                                 }
 
-                                                FriendStatus.REQUEST_RECEIVED -> {
-                                                    currentFriend.copy(status = FriendStatus.FRIENDS)
-                                                }
-
-                                                FriendStatus.REQUEST_SENT -> {
-                                                    currentFriend
-                                                }
-
-                                                FriendStatus.FRIENDS -> {
-                                                    currentFriend.copy(status = FriendStatus.NONE)
-                                                }
+                                            } else {
+                                                currentFriend
                                             }
-
-                                        } else {
-                                            currentFriend
                                         }
+                                    },
+                                    // Button is only interactable when an action can happen
+                                    enabled = friend.status == FriendStatus.NONE ||
+                                            friend.status == FriendStatus.REQUEST_RECEIVED ||
+                                            friend.status == FriendStatus.FRIENDS
+                                ) {
+                                    Text(
+                                        // Update button text based on the current relationship status
+                                        when (friend.status) {
+                                            FriendStatus.NONE -> "Add"
+                                            FriendStatus.REQUEST_SENT -> "Pending"
+                                            FriendStatus.REQUEST_RECEIVED -> "Accept"
+                                            FriendStatus.FRIENDS ->
+                                                if (selectedTab == FriendsTab.FRIENDS) "Unfriend" else "Friends"
+                                        }
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Button(
+                                    onClick = {
+                                        viewModel.openConversation(friend.id)
+                                        onNavigateToMessages()
                                     }
-                                },
-                                // Button is only interactable when an action can happen
-                                enabled = friend.status == FriendStatus.NONE ||
-                                        friend.status == FriendStatus.REQUEST_RECEIVED ||
-                                        friend.status == FriendStatus.FRIENDS
-                            ) {
-                                Text(
-                                    // Update button text based on the current relationship status
-                                    when (friend.status) {
-                                        FriendStatus.NONE -> "Add"
-                                        FriendStatus.REQUEST_SENT -> "Pending"
-                                        FriendStatus.REQUEST_RECEIVED -> "Accept"
-                                        FriendStatus.FRIENDS ->
-                                            if (selectedTab == FriendsTab.FRIENDS) "Unfriend" else "Friends"
-                                    }
-                                )
+                                ) {
+                                    Text("Message")
+                                }
                             }
                         }
                     }

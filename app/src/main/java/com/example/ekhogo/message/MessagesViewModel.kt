@@ -10,12 +10,17 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.collections.emptyList
 
 // Represents one chat message
 data class ChatMessage(
     val text: String,
     val isSentByMe: Boolean
+)
+
+data class ConversationPreview(
+    val otherUserId: String,
+    val otherUserName: String,
+    val lastMessage: String
 )
 
 class MessagesViewModel : ViewModel() {
@@ -28,11 +33,19 @@ class MessagesViewModel : ViewModel() {
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+    private val _conversationPreviews = MutableStateFlow<List<ConversationPreview>>(emptyList())
 
+    val conversationPreviews: StateFlow<List<ConversationPreview>> =
+        _conversationPreviews.asStateFlow()
+
+    private val _isInConversation = MutableStateFlow(false)
+    val isInConversation: StateFlow<Boolean> = _isInConversation.asStateFlow()
     private val _unreadCount = MutableStateFlow(0)
     val unreadCount: StateFlow<Int> = _unreadCount.asStateFlow()
 
     private var currentUserId: String = ""
+
+    private var activeConversationId: String? = null
     private var listenerRegistration: ListenerRegistration? = null
     private var isMessagesScreenOpen = false
     private var latestSeenTimestamp = 0L
@@ -49,7 +62,6 @@ class MessagesViewModel : ViewModel() {
                 .addOnSuccessListener {
                     currentUserId = auth.currentUser?.uid ?: ""
                     Log.d("AUTH", "Annonymous sign-in success: $currentUserId")
-                    startMessagesListener()
                 }
                 .addOnFailureListener { e ->
                     Log.e("AUTH", "Anonnymous sign-in failed", e)
@@ -57,26 +69,28 @@ class MessagesViewModel : ViewModel() {
         } else {
             currentUserId = auth.currentUser?.uid ?: ""
             Log.d("AUTH", "Already signed in : $currentUserId")
-            startMessagesListener()
         }
     }
 
     private fun startMessagesListener() {
+        val conversationId = activeConversationId ?: return
         if (currentUserId.isBlank()) return
 
         listenerRegistration?.remove()
-        listenerRegistration = db.collection("messages")
+        listenerRegistration = db.collection("conversations")
+            .document(conversationId)
+            .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("FIREBASE", "Error loading  messages", error)
+                    Log.e("FIREBASE", "Error loading messages", error)
                     return@addSnapshotListener
                 }
 
                 val documents = snapshot?.documents.orEmpty()
                 _messages.value = documents.map { document ->
                     val text = document.getString("text") ?: ""
-                    val senderId = document.getString("senderId") ?:""
+                    val senderId = document.getString("senderId") ?: ""
 
                     ChatMessage(
                         text = text,
@@ -97,7 +111,6 @@ class MessagesViewModel : ViewModel() {
 
                 if (isMessagesScreenOpen) {
                     latestSeenTimestamp = latestMessageTimestamp
-                    hasLoadedInitialSnapshot = true
                     _unreadCount.value = 0
                     return@addSnapshotListener
                 }
@@ -110,7 +123,32 @@ class MessagesViewModel : ViewModel() {
             }
     }
 
+    // Prevents duplication of chats between the same users
+    // ex: Tahja -> Chris
+    // will be the same for Chris -> Tahja
+    // This will be for the one-to-one messaging feature
+    private fun getConversationId(currentUserId: String, otherUserId: String): String {
+        return listOf(currentUserId, otherUserId)
+            .sorted()
+            .joinToString("_")
+    }
+
+    fun openConversation(otherUserId: String) {
+        if (currentUserId.isBlank()) return
+
+        activeConversationId = getConversationId(currentUserId, otherUserId)
+        _isInConversation.value = true
+        startMessagesListener()
+    }
+
+    fun closeConversation() {
+        activeConversationId = null
+        _isInConversation.value = false
+        _messages.value = emptyList()
+    }
+
     fun sendMessage(text: String) {
+        val conversationId = activeConversationId ?: return
         if (text.isBlank() || currentUserId.isBlank()) return
 
         val messageData = hashMapOf(
@@ -119,7 +157,9 @@ class MessagesViewModel : ViewModel() {
             "timestamp" to FieldValue.serverTimestamp()
         )
 
-        db.collection("messages")
+        db.collection("conversations")
+            .document(conversationId)
+            .collection("messages")
             .add(messageData)
             .addOnSuccessListener {
                 Log.d("FIREBASE", "Message sent successfully!")
@@ -142,5 +182,25 @@ class MessagesViewModel : ViewModel() {
     override fun onCleared() {
         listenerRegistration?.remove()
         super.onCleared()
+    }
+
+    fun loadMockConversationPreviews() {
+        _conversationPreviews.value = listOf(
+            ConversationPreview(
+                otherUserId = "1",
+                otherUserName = "Tahja Martin",
+                lastMessage = "Hey, are you going to class?"
+            ),
+            ConversationPreview(
+                otherUserId = "2",
+                otherUserName = "Kristopher Arakelyan",
+                lastMessage = "I sent the update last night."
+            ),
+            ConversationPreview(
+                otherUserId = "3",
+                otherUserName = "Chris Hernandez",
+                lastMessage = "Did you do the PR?"
+            )
+        )
     }
 }

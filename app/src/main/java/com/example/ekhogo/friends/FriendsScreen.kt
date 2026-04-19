@@ -38,29 +38,24 @@ fun FriendsScreen(
     viewModel: MessagesViewModel,
     onNavigateToMessages: () -> Unit
 ) {
-    // Temporary mock data for demo purposes until login / Firebase friend data is added later
-    var classmates by remember {
-        mutableStateOf(
-            listOf(
-                Friend("1", "Tahja Martin", "Computer Science", FriendStatus.FRIENDS),
-                Friend("2", "Kristopher Arakelyan", "Computer Science", FriendStatus.FRIENDS),
-                Friend("3", "Chris Hernandez", "Computer Science", FriendStatus.REQUEST_RECEIVED),
-                Friend("4", "Jude Segundera", "Computer Science", FriendStatus.NONE)
-            )
-        )
-    }
+
+    var classmates by remember { mutableStateOf<List<Friend>>(emptyList()) }
     // selectedTab controls which friend category is displayed
     var selectedTab by remember { mutableStateOf(FriendsTab.FRIENDS) }
     // searchText is used when clicking on the add friend tab to search for a user
     var searchText by remember { mutableStateOf("") }
 
     // Connecting to the database
-    val repository = FriendsRepository()
+    val repository = remember { FriendsRepository() }
 
-    LaunchedEffect(Unit) {
+    fun refreshClassmates() {
         repository.loadUsers { users ->
             classmates = users
         }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshClassmates()
     }
 
     // filter the full classmate list based on the selected tab
@@ -206,39 +201,36 @@ fun FriendsScreen(
                             Column {
                                 Button(
                                     onClick = {
-                                        classmates = classmates.map { currentFriend ->
-
-                                            if (currentFriend.id == friend.id) {
-
-                                                when (currentFriend.status) {
-
-                                                    FriendStatus.NONE -> {
-                                                        repository.sendFriendRequest(currentFriend.id)
-                                                        currentFriend.copy(status = FriendStatus.REQUEST_SENT)
-                                                    }
-
-                                                    FriendStatus.REQUEST_RECEIVED -> {
-                                                        currentFriend.copy(status = FriendStatus.FRIENDS)
-                                                    }
-
-                                                    FriendStatus.REQUEST_SENT -> {
-                                                        currentFriend
-                                                    }
-
-                                                    FriendStatus.FRIENDS -> {
-                                                        currentFriend.copy(status = FriendStatus.NONE)
+                                            when (friend.status) {
+                                                FriendStatus.NONE -> {
+                                                    repository.sendFriendRequest(friend.id) { success ->
+                                                        if (success) {
+                                                            refreshClassmates()
+                                                        }
                                                     }
                                                 }
 
-                                            } else {
-                                                currentFriend
+                                                FriendStatus.REQUEST_RECEIVED -> {
+                                                    repository.acceptFriendRequest(friend.id) { success ->
+                                                        if (success) {
+                                                            refreshClassmates()
+                                                        }
+                                                    }
+                                                }
+
+                                                FriendStatus.REQUEST_SENT -> Unit
+
+                                                FriendStatus.FRIENDS -> {
+                                                    repository.removeFriend(friend.id)  { success ->
+                                                        if (success) {
+                                                            refreshClassmates()
+                                                        }
+                                                    }
+                                                }
                                             }
-                                        }
                                     },
                                     // Button is only interactable when an action can happen
-                                    enabled = friend.status == FriendStatus.NONE ||
-                                            friend.status == FriendStatus.REQUEST_RECEIVED ||
-                                            friend.status == FriendStatus.FRIENDS
+                                    enabled = friend.status != FriendStatus.REQUEST_SENT
                                 ) {
                                     Text(
                                         // Update button text based on the current relationship status
@@ -246,20 +238,34 @@ fun FriendsScreen(
                                             FriendStatus.NONE -> "Add"
                                             FriendStatus.REQUEST_SENT -> "Pending"
                                             FriendStatus.REQUEST_RECEIVED -> "Accept"
-                                            FriendStatus.FRIENDS ->
-                                                if (selectedTab == FriendsTab.FRIENDS) "Unfriend" else "Friends"
+                                            FriendStatus.FRIENDS -> "Unfriend"
                                         }
                                     )
                                 }
+
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                Button(
-                                    onClick = {
-                                        viewModel.openConversation(friend.id)
-                                        onNavigateToMessages()
+                                if (friend.status == FriendStatus.REQUEST_RECEIVED) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            repository.rejectFriendRequest(friend.id) { success ->
+                                                if (success) {
+                                                    refreshClassmates()
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Text("Decline")
                                     }
-                                ) {
-                                    Text("Message")
+                                } else if (friend.status == FriendStatus.FRIENDS) {
+                                    Button(
+                                        onClick = {
+                                            viewModel.openConversation(friend.id)
+                                            onNavigateToMessages()
+                                        }
+                                    ) {
+                                        Text("Message")
+                                    }
                                 }
                             }
                         }

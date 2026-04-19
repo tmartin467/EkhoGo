@@ -10,6 +10,25 @@ class FriendsRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
+    private fun findFriendRequestDocument(
+        fromUserId: String,
+        toUserId: String,
+        onResult: (String?) -> Unit
+    ) {
+        db.collection("friend_requests")
+            .whereEqualTo("fromUserId", fromUserId)
+            .whereEqualTo("toUserId", toUserId)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                onResult(snapshot.documents.firstOrNull()?.id)
+            }
+            .addOnFailureListener { e ->
+                Log.e("FRIENDS", "Error finding friend request", e)
+                onResult(null)
+            }
+    }
+
     fun sendFriendRequest(toUserId: String, onComplete: (Boolean) -> Unit = {}) {
         val currentUserId = auth.currentUser?.uid ?: run {
             onComplete(false)
@@ -126,31 +145,38 @@ class FriendsRepository {
             return
         }
 
-        val requestId =  "$(fromUserId)_${currentUserId}"
-        val requestRef = db.collection("friend_requests").document(requestId)
-        val currentUserRef = db.collection("users").document(currentUserId)
-        val otherUserRef = db.collection("users").document(fromUserId)
-
-        val batch = db.batch()
-        batch.update(
-            requestRef,
-            mapOf<String, Any>(
-                "status" to "accepted",
-                "respondedAt" to FieldValue.serverTimestamp()
-            )
-        )
-        batch.update(currentUserRef, "friends", FieldValue.arrayUnion(fromUserId))
-        batch.update(otherUserRef, "friends", FieldValue.arrayUnion(currentUserId))
-
-        batch.commit()
-            .addOnSuccessListener {
-                Log.d("FRIENDS", "Friend request accepted")
-                onComplete(true)
-            }
-            .addOnFailureListener { e ->
-                Log.e("FRIENDS", "Error accepting friend request", e)
+        findFriendRequestDocument(fromUserId, currentUserId) { requestId ->
+            if (requestId == null) {
+                Log.e("FRIENDS", "No friend request found to accept")
                 onComplete(false)
+                return@findFriendRequestDocument
             }
+
+            val requestRef = db.collection("friend_requests").document(requestId)
+            val currentUserRef = db.collection("users").document(currentUserId)
+            val otherUserRef = db.collection("users").document(fromUserId)
+
+            val batch = db.batch()
+            batch.update(
+                requestRef,
+                mapOf<String, Any>(
+                    "status" to "accepted",
+                    "respondedAt" to FieldValue.serverTimestamp()
+                )
+            )
+            batch.update(currentUserRef, "friends", FieldValue.arrayUnion(fromUserId))
+            batch.update(otherUserRef, "friends", FieldValue.arrayUnion(currentUserId))
+
+            batch.commit()
+                .addOnSuccessListener {
+                    Log.d("FRIENDS", "Friend request accepted")
+                    onComplete(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.e("FRIENDS", "Error accepting friend request", e)
+                    onComplete(false)
+                }
+        }
     }
 
     fun rejectFriendRequest(fromUserId: String, onComplete: (Boolean) -> Unit = {}) {
@@ -159,24 +185,30 @@ class FriendsRepository {
             return
         }
 
-        val requestId = "$(fromUserId)_${currentUserId}"
-
-        db.collection("friend_requests")
-            .document(requestId)
-            .update(
-                mapOf<String, Any>(
-                    "status" to "rejected",
-                    "respondedAt" to FieldValue.serverTimestamp()
-                )
-            )
-            .addOnSuccessListener {
-                Log.d("FRIENDS", "Friend request rejected")
-                onComplete(true)
-            }
-            .addOnFailureListener { e ->
-                Log.d("FRIENDS", "Error rejecting friend request", e)
+        findFriendRequestDocument(fromUserId, currentUserId) { requestId ->
+            if (requestId == null) {
+                Log.e("FRIENDS", "No friend request found to reject")
                 onComplete(false)
+                return@findFriendRequestDocument
             }
+
+            db.collection("friend_requests")
+                .document(requestId)
+                .update(
+                    mapOf<String, Any>(
+                        "status" to "rejected",
+                        "respondedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+                .addOnSuccessListener {
+                    Log.d("FRIENDS", "Friend request rejected")
+                    onComplete(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.d("FRIENDS", "Error rejecting friend request", e)
+                    onComplete(false)
+                }
+        }
     }
 
     fun removeFriend(fromUserId: String, onComplete: (Boolean) -> Unit = {}) {

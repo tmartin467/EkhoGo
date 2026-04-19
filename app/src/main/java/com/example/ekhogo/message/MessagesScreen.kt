@@ -45,7 +45,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
     // Listen for messages from Firestore in real time
     DisposableEffect(Unit) {
         viewModel.onMessagesScreenOpened()
-        viewModel.loadMockConversationPreviews()
+        viewModel.loadConversationsPreview()
 
         onDispose {
             viewModel.onMessagesScreenClosed()

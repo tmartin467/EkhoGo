@@ -218,7 +218,13 @@ fun HomeScreen(
                 1 -> CalendarScreen()
 
                 // If Friends is selected
-                2 -> FriendsScreen()
+                2 -> FriendsScreen(
+                    viewModel = messagesViewModel,
+                    onNavigateToMessages = {
+                        selectedTab.intValue = 4
+                    }
+                )
+
 
                 // If Maps is selected
                 3 -> CampusMapScreen()

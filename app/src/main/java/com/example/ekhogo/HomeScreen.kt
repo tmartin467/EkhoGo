@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,9 +87,10 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ekho_go_logo),
+                            painter = painterResource(id = R.drawable.homepage_icon),
                             contentDescription = "EkhoGo logo",
-                            modifier = Modifier.size(70.dp)
+                            modifier = Modifier.size(60.dp),
+                            contentScale = ContentScale.Crop
                         )
                         Text("EkhoGo", fontSize = 36.sp)
                     }
@@ -218,7 +220,13 @@ fun HomeScreen(
                 1 -> CalendarScreen()
 
                 // If Friends is selected
-                2 -> FriendsScreen()
+                2 -> FriendsScreen(
+                    viewModel = messagesViewModel,
+                    onNavigateToMessages = {
+                        selectedTab.intValue = 4
+                    }
+                )
+
 
                 // If Maps is selected
                 3 -> CampusMapScreen()

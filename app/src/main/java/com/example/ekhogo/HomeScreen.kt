@@ -50,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ekhogo.ToDo.ToDoClass
 import com.example.ekhogo.ToDo.ToDoHomePage
 import com.example.ekhogo.ToDo.ToDoScreen
+import com.example.ekhogo.calendar.CalendarScreen
 import com.example.ekhogo.friends.FriendsScreen
 import com.example.ekhogo.map.CampusMapScreen
 import com.example.ekhogo.message.MessagesScreen

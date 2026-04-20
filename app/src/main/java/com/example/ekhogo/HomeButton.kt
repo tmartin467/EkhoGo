@@ -133,19 +133,32 @@ fun HomeButton(onNavigate: (Int) -> Unit,
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                scheduleList.forEach { item ->
 
-                    val className = item["className"] as? String ?: ""
-                    val locationName = item["locationName"] as? String ?: ""
-                    val start = item["startTime"] as? String ?: ""
-                    val end = item["endTime"] as? String ?: ""
-                    val days = item["days"] as? List<*> ?: emptyList<Any>()
-
+                if (scheduleList.isEmpty()) {
                     Text(
-                        text = "$className in $locationName: $start - $end (${days.joinToString(", ")})",
+                        text = "No classes are scheduled for this semester",
                         fontSize = 20.sp,
-                        modifier = Modifier.padding(4.dp)
+                        modifier = Modifier.padding(vertical = 4.dp)
                     )
+                } else {
+                    scheduleList.forEach { item ->
+
+                        val className = item["className"] as? String ?: ""
+                        val locationName = item["locationName"] as? String ?: ""
+                        val start = item["startTime"] as? String ?: ""
+                        val end = item["endTime"] as? String ?: ""
+                        val days = item["days"] as? List<*> ?: emptyList<Any>()
+
+                        Text(
+                            text = "$className in $locationName: $start - $end (${
+                                days.joinToString(
+                                    ", "
+                                )
+                            })",
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(4.dp)
+                        )
+                    }
                 }
             }
         }

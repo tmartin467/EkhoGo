@@ -14,13 +14,13 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit, onGoToRegister: () -> Unit) {
@@ -32,8 +32,10 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onGoToRegister: () -> Unit) {
     var errorMessage by remember { mutableStateOf("") }
 
 
-    Column(modifier = Modifier.fillMaxSize()
-        .padding(16.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -66,26 +68,32 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onGoToRegister: () -> Unit) {
         // Login button
         Button(
             onClick = {
-                    auth.signInWithEmailAndPassword(email, password) // Firebase sign in authentication request
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                onLoginSuccess() //goes to homepage on successful login
-                            } else {
-                                errorMessage = "Invalid email or password"
-                            }
+                errorMessage = ""
+
+                auth.signInWithEmailAndPassword(
+                    email.trim(),
+                    password
+                )
+                    // Firebase sign in authentication request
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            onLoginSuccess() //goes to homepage on successful login
+                        } else {
+                            errorMessage = task.exception?.localizedMessage ?: "Login failed"
                         }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Login")
-            }
+                    }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Login")
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         // Button to navigate to the register screen
         Button(
             onClick = onGoToRegister,
             modifier = Modifier.fillMaxWidth()
-        ){
+        ) {
             Text("Register")
         }
         // Error message if login fails

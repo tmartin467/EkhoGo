@@ -14,11 +14,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import coil.compose.AsyncImage
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,17 +46,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.unit.dp
+import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen( toHomeScreen: () -> Unit){
+fun ProfileScreen(toHomeScreen: () -> Unit) {
     // variables for storing editable user data
-    val currentUser = FirebaseAuth.getInstance().currentUser // Firebase Instance for authentication to get current user info
+    val currentUser =
+        FirebaseAuth.getInstance().currentUser // Firebase Instance for authentication to get current user info
     var name by remember { mutableStateOf("") }
     var major by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
+    var profileImageUrl by remember { mutableStateOf("") } // url of the user's profile picture
+    var profileImageUri by remember { mutableStateOf<android.net.Uri?>(null) } //
+    // opens the device image picker so the user can change their picture
+    val imagePicker =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
+            profileImageUri = uri
+        }
 
     var classesList by remember { mutableStateOf(listOf<String>()) }
     var interestsList by remember { mutableStateOf(listOf<String>()) }
@@ -67,6 +82,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
     var initialBio by remember { mutableStateOf("") }
     var initialClasses by remember { mutableStateOf(listOf<String>()) }
     var initialInterests by remember { mutableStateOf(listOf<String>()) }
+    var initialProfileImageUrl by remember { mutableStateOf("") }
 
 
     // Firebase instance to access database and get user data according to the uid
@@ -74,7 +90,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
     val uid = currentUser?.uid
 
     // Load user profile data from Firestore database using the current uid
-    LaunchedEffect(uid){
+    LaunchedEffect(uid) {
         if (uid != null) {
             db.collection("users").document(uid).get()
                 .addOnSuccessListener { document ->
@@ -82,9 +98,14 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                     name = document.getString("name") ?: ""
                     major = document.getString("major") ?: ""
                     bio = document.getString("bio") ?: ""
+                    profileImageUrl = document.getString("profileImageUrl") ?: "" // Load the saved Url from Firestore
+
                     // Load lists from database
-                    classesList = (document.get("classes") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                    interestsList = (document.get("interests") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    classesList = (document.get("classes") as? List<*>)?.filterIsInstance<String>()
+                        ?: emptyList()
+                    interestsList =
+                        (document.get("interests") as? List<*>)?.filterIsInstance<String>()
+                            ?: emptyList()
 
                     // Convert the lists to strings for editing
                     classesInput = classesList.joinToString(", ")
@@ -96,7 +117,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                     initialBio = bio
                     initialClasses = classesList
                     initialInterests = interestsList
-
+                    initialProfileImageUrl = profileImageUrl
 
                     loadingProfile = false // Loading complete so now the UI can be displayed
                 }
@@ -142,16 +163,45 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                 Surface(
                     modifier = Modifier
                         .size(110.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape),
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile picture",
-                            modifier = Modifier.size(50.dp)
-                        )
+                        // Show profile picture if it exists, if not then default
+                        when {
+                            // When a new image is selected show the preview before saving
+                            profileImageUri != null -> {
+                                AsyncImage(
+                                    model = profileImageUri,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            // If no new image is selected show the saved profile picture
+                            profileImageUrl.isNotBlank() -> {
+                                AsyncImage(
+                                    model = profileImageUrl,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            // default icon
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier.size(50.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -179,13 +229,19 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                     ProfileCard(
                         title = "Personal Info"
                     ) {
-                        ProfileInfo(label = "Name", value = name.ifBlank { "Not added yet"})
+                        ProfileInfo(label = "Name", value = name.ifBlank { "Not added yet" })
                         Spacer(modifier = Modifier.height(16.dp))
-                        ProfileInfo(label = "Major", value = major.ifBlank { "Not added yet"})
+                        ProfileInfo(label = "Major", value = major.ifBlank { "Not added yet" })
                         Spacer(modifier = Modifier.height(16.dp))
-                        ProfileInfo(label = "Classes", value = if (classesList.isNotEmpty()) classesList.joinToString(", ") else "Not added yet") // Convert the list to a string for display
+                        ProfileInfo(
+                            label = "Classes",
+                            value = if (classesList.isNotEmpty()) classesList.joinToString(", ") else "Not added yet"
+                        ) // Convert the list to a string for display
                         Spacer(modifier = Modifier.height(16.dp))
-                        ProfileInfo(label = "Interests", value = if (interestsList.isNotEmpty()) interestsList.joinToString(", ") else "Not added yet")
+                        ProfileInfo(
+                            label = "Interests",
+                            value = if (interestsList.isNotEmpty()) interestsList.joinToString(", ") else "Not added yet"
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -204,7 +260,6 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                     Spacer(modifier = Modifier.height(24.dp))
 
 
-
                     // Edit profile button to update user info
                     Button(
                         onClick = {
@@ -216,6 +271,12 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                         Text("Edit Profile")
                     }
                 } else {
+                    // Change profile picture button in edit mode
+                    Button(onClick = {
+                        imagePicker.launch("image/*")
+                    }) {
+                        Text("Change Profile Picture")
+                    }
                     // Edit profile mode where user can edit their info
                     ProfileCard(title = "Edit Personal Info") {
                         OutlinedTextField(
@@ -229,8 +290,8 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
 
                         OutlinedTextField(
                             value = major,
-                            onValueChange = {major = it},
-                            label = { Text("Major")},
+                            onValueChange = { major = it },
+                            label = { Text("Major") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -239,7 +300,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                         OutlinedTextField(
                             value = classesInput,
                             onValueChange = { classesInput = it },
-                            label = { Text("Classes")},
+                            label = { Text("Classes") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -248,7 +309,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                         OutlinedTextField(
                             value = interestsInput,
                             onValueChange = { interestsInput = it },
-                            label = { Text("Interests")},
+                            label = { Text("Interests") },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -259,7 +320,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                         OutlinedTextField(
                             value = bio,
                             onValueChange = { bio = it },
-                            label = { Text("Bio")},
+                            label = { Text("Bio") },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -278,6 +339,8 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                                 bio = initialBio
                                 classesList = initialClasses
                                 interestsList = initialInterests
+                                profileImageUrl = initialProfileImageUrl
+                                profileImageUri = null
 
 
                                 classesInput = initialClasses.joinToString(", ")
@@ -304,49 +367,80 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
                                         .map { interestName -> interestName.trim() }
                                         .filter { interestName -> interestName.isNotBlank() }
 
-                                    // Save updated user data to database
-                                    val updateUserData = hashMapOf(
-                                        "name" to name,
-                                        "major" to major,
-                                        "bio" to bio,
-                                        "classes" to classesList,
-                                        "interests" to interestsList
-                                    )
+                                    // Firebase storage reference where the pictures are uploaded
+                                    val storageReference = FirebaseStorage.getInstance().reference
 
-                                    // Update only the fields that have been changed in the users document
-                                    db.collection("users")
-                                        .document(uid)
-                                        .update(updateUserData as Map<String, Any>)
-                                        .addOnSuccessListener {
-                                            initialName = name
-                                            initialMajor = major
-                                            initialBio = bio
-                                            initialClasses = classesList
-                                            initialInterests = interestsList
+                                    fun saveProfileData(newProfileImageUrl: String) {
+                                        // Save updated user data to database
+                                        val updateUserData = hashMapOf(
+                                            "name" to name,
+                                            "major" to major,
+                                            "bio" to bio,
+                                            "classes" to classesList,
+                                            "interests" to interestsList,
+                                            "profileImageUrl" to newProfileImageUrl
+                                        )
 
-                                            saveMessage = "Profile updated successfully!"
-                                            isEditing = false
-                                        }
-                                        .addOnFailureListener {
-                                            saveMessage = "Failed to update profile."
-                                        }
+                                        // Update only the fields that have been changed in the users document
+                                        db.collection("users")
+                                            .document(uid)
+                                            .update(updateUserData as Map<String, Any>)
+                                            .addOnSuccessListener {
+                                                profileImageUrl = newProfileImageUrl
+                                                initialName = name
+                                                initialMajor = major
+                                                initialBio = bio
+                                                initialClasses = classesList
+                                                initialInterests = interestsList
+                                                initialProfileImageUrl = newProfileImageUrl
+
+                                                profileImageUri = null
+                                                saveMessage = "Profile updated!"
+                                                isEditing = false
+                                            }
+                                            .addOnFailureListener {
+                                                saveMessage = "Failed to update profile."
+                                            }
+                                    }
+                                    // Uploads the selected image to Firebase Storage before saving the Url to the database
+                                    if (profileImageUri != null) {
+                                        val imageReference =
+                                            storageReference.child("profileImages/${uid}.jpg")
+
+                                        imageReference.putFile(profileImageUri!!)
+                                            .addOnSuccessListener {
+                                                // Gets the download URL of the uploaded image to store in Firestore
+                                                imageReference.downloadUrl.addOnSuccessListener { downloadUri ->
+                                                    saveProfileData(downloadUri.toString())
+                                                }.addOnFailureListener {
+                                                    saveMessage = "Failed to get image URL."
+                                                }
+                                            }
+                                            .addOnFailureListener {
+                                                saveMessage = "Failed to upload image."
+                                            }
+                                    } else {
+                                        // If no new image is selected then save the rest of the profile
+                                        saveProfileData(profileImageUrl)
+                                    }
                                 }
                             },
                             modifier = Modifier.weight(1f)
-                        ){
+                        ) {
                             Text("Save")
                         }
                     }
                 }
 
-            if (saveMessage.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = saveMessage,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    style = MaterialTheme.typography.bodyMedium
-                ) }
+                if (saveMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = saveMessage,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }
@@ -354,7 +448,7 @@ fun ProfileScreen( toHomeScreen: () -> Unit){
 
 
 @Composable
-fun ProfileCard(title: String, content: @Composable () -> Unit){
+fun ProfileCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -363,7 +457,7 @@ fun ProfileCard(title: String, content: @Composable () -> Unit){
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
-        ){
+        ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
@@ -378,7 +472,7 @@ fun ProfileCard(title: String, content: @Composable () -> Unit){
 }
 
 @Composable
-fun ProfileInfo(label: String, value: String){
+fun ProfileInfo(label: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,

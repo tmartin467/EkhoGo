@@ -59,8 +59,8 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var major by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
-    var profileImageUrl by remember { mutableStateOf("") }
-    var profileImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var profileImageUrl by remember { mutableStateOf("") } // url of the user's profile picture
+    var profileImageUri by remember { mutableStateOf<android.net.Uri?>(null) } //
     // opens the device image picker so the user can change their picture
     val imagePicker =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -170,20 +170,37 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // Show profile picture if it exists, if not then default
-                        if (profileImageUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = profileImageUrl, contentDescription = "Profile picture",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Profile picture",
-                                modifier = Modifier.size(50.dp)
-                            )
+                        when {
+                            // When a new image is selected show the preview before saving
+                            profileImageUri != null -> {
+                                AsyncImage(
+                                    model = profileImageUri,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            // If no new image is selected show the saved profile picture
+                            profileImageUrl.isNotBlank() -> {
+                                AsyncImage(
+                                    model = profileImageUrl,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            // default icon
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier.size(50.dp)
+                                )
+                            }
                         }
                     }
                 }

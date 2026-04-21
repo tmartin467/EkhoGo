@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
@@ -59,6 +61,7 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
     var bio by remember { mutableStateOf("") }
     var profileImageUrl by remember { mutableStateOf("") }
     var profileImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    // opens the device image picker so the user can change their picture
     val imagePicker =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
             profileImageUri = uri
@@ -95,7 +98,7 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                     name = document.getString("name") ?: ""
                     major = document.getString("major") ?: ""
                     bio = document.getString("bio") ?: ""
-                    profileImageUrl = document.getString("profileImageUrl") ?: ""
+                    profileImageUrl = document.getString("profileImageUrl") ?: "" // Load the saved Url from Firestore
 
                     // Load lists from database
                     classesList = (document.get("classes") as? List<*>)?.filterIsInstance<String>()
@@ -160,17 +163,20 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                 Surface(
                     modifier = Modifier
                         .size(110.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape),
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
+                        // Show profile picture if it exists, if not then default
                         if (profileImageUrl.isNotBlank()) {
                             AsyncImage(
                                 model = profileImageUrl, contentDescription = "Profile picture",
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(CircleShape)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
                             )
                         } else {
                             Icon(
@@ -248,6 +254,7 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                         Text("Edit Profile")
                     }
                 } else {
+                    // Change profile picture button in edit mode
                     Button(onClick = {
                         imagePicker.launch("image/*")
                     }) {
@@ -343,6 +350,7 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                                         .map { interestName -> interestName.trim() }
                                         .filter { interestName -> interestName.isNotBlank() }
 
+                                    // Firebase storage reference where the pictures are uploaded
                                     val storageReference = FirebaseStorage.getInstance().reference
 
                                     fun saveProfileData(newProfileImageUrl: String) {
@@ -377,12 +385,14 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                                                 saveMessage = "Failed to update profile."
                                             }
                                     }
+                                    // Uploads the selected image to Firebase Storage before saving the Url to the database
                                     if (profileImageUri != null) {
                                         val imageReference =
                                             storageReference.child("profileImages/${uid}.jpg")
 
                                         imageReference.putFile(profileImageUri!!)
                                             .addOnSuccessListener {
+                                                // Gets the download URL of the uploaded image to store in Firestore
                                                 imageReference.downloadUrl.addOnSuccessListener { downloadUri ->
                                                     saveProfileData(downloadUri.toString())
                                                 }.addOnFailureListener {

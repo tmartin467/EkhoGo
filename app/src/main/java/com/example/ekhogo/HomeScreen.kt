@@ -11,6 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import coil.compose.AsyncImage
+import androidx.compose.runtime.LaunchedEffect
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
@@ -42,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -67,6 +74,10 @@ fun HomeScreen(
     val selectedTab = remember { mutableIntStateOf(0) }
     val messagesViewModel: MessagesViewModel = viewModel()
     val ToDoList = remember { mutableStateListOf<ToDoClass>() }
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val db = FirebaseFirestore.getInstance()
+
+    var profileImageUrl by remember { mutableStateOf("") }
     val unreadCount by messagesViewModel.unreadCount.collectAsState()
     var expandedMenu by remember { mutableStateOf(false) } // Variable that tracks whether the dropdown menu is open or not
     val navigationItemColors = NavigationBarItemDefaults.colors(
@@ -76,6 +87,18 @@ fun HomeScreen(
         unselectedTextColor = Color.White.copy(alpha = 0.75f),
         indicatorColor = MaterialTheme.colorScheme.primaryContainer
     )
+
+    LaunchedEffect(currentUser?.uid) {
+        val uid = currentUser?.uid
+        if (uid != null) {
+            db.collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    profileImageUrl = document.getString("profileImageUrl") ?: ""
+                }
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -99,11 +122,23 @@ fun HomeScreen(
                     Box {
                         // Profile Icon on the top right of the screen
                         IconButton(onClick = { expandedMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Profile menu",
-                                tint = Color.White
-                            )
+                            if (profileImageUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = profileImageUrl,
+                                    contentDescription = "Profile Menu",
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .border(1.dp, Color.White, CircleShape)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile menu",
+                                    tint = Color.White
+                                )
+                            }
                         }
                         // Dropdown menu for the profile icon
                         DropdownMenu(

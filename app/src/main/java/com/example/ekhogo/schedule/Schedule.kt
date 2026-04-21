@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -106,12 +108,13 @@ fun Schedule() {
                 modifier = Modifier
                     .weight(1f)
                     .padding(16.dp),
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Red
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = Color.LightGray,
+                    contentColor = Color.Red
                 )
-                ) {
-                Text(text = selectedTimeStart,
+            ) {
+                Text(
+                    text = selectedTimeStart,
                     fontSize = 20.sp,
                 )
             }
@@ -123,12 +126,16 @@ fun Schedule() {
                 TimePickerDialogUI(
                     onConfirm = { hour, minute ->
 
-                        if(hour >= 12){
+                        if (hour >= 12) {
                             pmHourStart = hour - 12
                             amPmStart = "PM"
+                        } else if (hour < 12) {
+                            amPmStart = "AM"
+                            pmHourStart = hour
                         }
 
-                        selectedTimeStart = String.format("%02d:%02d %s", hour, minute, amPmStart)
+                        selectedTimeStart =
+                            String.format("%02d:%02d %s", pmHourStart, minute, amPmStart)
                         showDialogStart = false
                     },
                     onDismiss = {
@@ -147,7 +154,8 @@ fun Schedule() {
                     contentColor = Color.Red
                 )
             ) {
-                Text(text = selectedTimeEnd,
+                Text(
+                    text = selectedTimeEnd,
                     fontSize = 20.sp,
                 )
             }
@@ -156,9 +164,12 @@ fun Schedule() {
             if (showDialogEnd) {
                 TimePickerDialogUI(
                     onConfirm = { hour, minute ->
-                        if(hour >= 12){
+                        if (hour >= 12) {
                             pmHourEnd = hour - 12
                             amPmEnd = "PM"
+                        } else if (hour < 12) {
+                            amPmEnd = "AM"
+                            pmHourEnd = hour
                         }
 
                         selectedTimeEnd = String.format("%02d:%02d %s", pmHourEnd, minute, amPmEnd)
@@ -182,12 +193,13 @@ fun Schedule() {
                 modifier = Modifier
                     .weight(1f)
                     .padding(16.dp),
-                    colors = ButtonDefaults.textButtonColors(
+                colors = ButtonDefaults.textButtonColors(
                     containerColor = Color.LightGray,
                     contentColor = Color.Red
-                    )
+                )
             ) {
-                Text(text = selectedDaysText,
+                Text(
+                    text = selectedDaysText,
                     fontSize = 20.sp,
                 )
             }
@@ -241,7 +253,6 @@ fun Schedule() {
                     val db = FirebaseFirestore.getInstance()
 
 
-
                     val classData = hashMapOf(
                         "className" to classes.value,
                         "locationName" to location.value,
@@ -271,32 +282,51 @@ fun Schedule() {
 
         )
 
-        Box(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         )
         {
-        }
 
-        scheduleList.forEach { item ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
 
-                val className = item["className"] as? String ?: ""
-                val locationName = item["locationName"] as? String ?: ""
-                val start = item["startTime"] as? String ?: ""
-                val end = item["endTime"] as? String ?: ""
-                val days = item["days"] as? List<*> ?: emptyList<Any>()
+                if (scheduleList.isEmpty()) {
+                    Text(
+                        text = "No classes are scheduled for this semester",
+                        fontSize = 20.sp,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                } else {
+                    scheduleList.forEach { item ->
+                        val className = item["className"] as? String ?: ""
+                        val locationName = item["locationName"] as? String ?: ""
+                        val start = item["startTime"] as? String ?: ""
+                        val end = item["endTime"] as? String ?: ""
+                        val days = item["days"] as? List<*> ?: emptyList<Any>()
 
-                Text(
-                    text = "  $className in $locationName: $start - $end (${days.joinToString(", ")})",
-                    fontSize = 20.sp,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                        Text(
+                            text = "$className in $locationName: $start - $end (${
+                                days.joinToString(
+                                    ", "
+                                )
+                            })",
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+
+                }
+            }
         }
 
     }
 }
-
 
 
 

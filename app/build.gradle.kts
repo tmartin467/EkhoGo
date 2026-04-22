@@ -36,6 +36,12 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
+    packaging {
+        resources {
+            excludes += "/META-INF/DEPENDENCIES"
+            }
+        }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -61,10 +67,14 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("io.coil-kt:coil-compose:2.6.0")
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.ui)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.places)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -76,6 +86,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material.icons.extended)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("com.google.api-client:google-api-client-android:2.6.0")
+    implementation("com.google.apis:google-api-services-calendar:v3-rev411-1.25.0")
     implementation("com.google.maps.android:maps-compose:6.12.2")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

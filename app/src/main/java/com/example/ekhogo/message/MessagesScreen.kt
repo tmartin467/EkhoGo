@@ -1,8 +1,10 @@
 package com.example.ekhogo.message
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +29,7 @@ import androidx.compose.ui.unit.dp
 
 // This is the screen that shows when Messages tab is selected
 @Composable
-fun MessagesScreen(viewModel : MessagesViewModel) {
+fun MessagesScreen(viewModel: MessagesViewModel) {
 
     // This stores what the user types in the input box
     val messageText = remember { mutableStateOf("") }
@@ -35,9 +37,16 @@ fun MessagesScreen(viewModel : MessagesViewModel) {
     // The stores all the messages that have been sent
     val messages by viewModel.messages.collectAsState()
 
+    // List of conversation previews (inbox-style chat list)
+    val conversationPreviews by viewModel.conversationPreviews.collectAsState()
+
+    val isInConversation by viewModel.isInConversation.collectAsState()
+
     // Listen for messages from Firestore in real time
     DisposableEffect(Unit) {
         viewModel.onMessagesScreenOpened()
+        viewModel.loadConversationsPreview()
+
         onDispose {
             viewModel.onMessagesScreenClosed()
         }
@@ -58,72 +67,123 @@ fun MessagesScreen(viewModel : MessagesViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                items(messages) { message ->
 
-                    // Put my messages on the right and other messages
-                    // on the left
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        contentAlignment = if (message.isSentByMe) {
-                            Alignment.CenterEnd
-                        } else {
-                            Alignment.CenterStart
-                        }
-                    ) {
-                        Text(
-                            text = message.text,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            if (!isInConversation) {
+
+                // 📥 INBOX VIEW
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    items(conversationPreviews) { preview ->
+
+                        Column(
                             modifier = Modifier
-                                .background(
-                                    color = if (message.isSentByMe) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    },
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        )
-                    }
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.openConversation(preview.otherUserId)
+                                }
+                                .padding(12.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = preview.otherUserName,
+                                style = MaterialTheme.typography.titleMedium
+                            )
 
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = preview.lastMessage,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+
+            } else {
+
+                // CHAT VIEW
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    items(messages) { message ->
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            contentAlignment = if (message.isSentByMe) {
+                                Alignment.CenterEnd
+                            } else {
+                                Alignment.CenterStart
+                            }
+                        ) {
+                            Text(
+                                text = message.text,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier
+                                    .background(
+                                        color = if (message.isSentByMe) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
                 }
             }
             // BOTTOM:
             // Input field where user types message
             // Should stay at the bottom of the screen
-            Column {
+            if (isInConversation) {
+                Column {
 
-                OutlinedTextField(
-                    value = messageText.value,
-                    onValueChange = { messageText.value = it },
-                    label = { Text("Type a message") },
-                    maxLines = 5,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    OutlinedTextField(
+                        value = messageText.value,
+                        onValueChange = { messageText.value = it },
+                        label = { Text("Type a message") },
+                        maxLines = 5,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                // Button to send
-                Button(
-                    onClick = {
-                        // Only send if the text box is NOT empty
-                        if (messageText.value.isNotBlank()) {
-                            viewModel.sendMessage(messageText.value)
-                            messageText.value = ""
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                viewModel.closeConversation()
+                            }
+                        ) {
+                            Text("Back")
                         }
-                    },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Send")
-                }
 
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Button(
+                            onClick = {
+                                if (messageText.value.isNotBlank()) {
+                                    viewModel.sendMessage(messageText.value)
+                                    messageText.value = ""
+                                }
+                            },
+                        ) {
+                            Text("Send")
+                        }
+
+                    }
+                }
             }
         }
     }

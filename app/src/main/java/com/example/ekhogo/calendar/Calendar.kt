@@ -315,10 +315,16 @@ fun CalendarScreen() {
 
                         if (hour >= 12) {
                             pmHourStart = hour - 12
+                            if(hour == 12){
+                                pmHourStart = hour
+                            }
                             amPmStart = "PM"
                         }else if(hour < 12){
                             amPmStart = "AM"
                             pmHourStart = hour
+                            if(hour == 0){
+                                pmHourStart = 12
+                            }
                         }
                         selectedTimeStart = String.format("%02d:%02d %s", pmHourStart, minute, amPmStart)
                         showDialogStart = false
@@ -355,10 +361,16 @@ fun CalendarScreen() {
 
                         if (hour >= 12) {
                             pmHourEnd = hour - 12
+                            if(hour == 12){
+                                pmHourEnd = hour
+                            }
                             amPmEnd = "PM"
                         }else if(hour < 12){
                             amPmEnd = "AM"
                             pmHourEnd = hour
+                            if(hour == 0){
+                                pmHourEnd = 12
+                            }
                         }
                         selectedTimeEnd = String.format("%02d:%02d %s", pmHourEnd, minute, amPmEnd)
                         showDialogEnd = false

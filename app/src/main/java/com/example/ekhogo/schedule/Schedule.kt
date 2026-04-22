@@ -128,10 +128,16 @@ fun Schedule() {
 
                         if (hour >= 12) {
                             pmHourStart = hour - 12
+                            if(hour == 12){
+                                pmHourStart = hour
+                            }
                             amPmStart = "PM"
-                        } else if (hour < 12) {
+                        }else if(hour < 12){
                             amPmStart = "AM"
                             pmHourStart = hour
+                            if(hour == 0){
+                                pmHourStart = 12
+                            }
                         }
 
                         selectedTimeStart =
@@ -164,12 +170,19 @@ fun Schedule() {
             if (showDialogEnd) {
                 TimePickerDialogUI(
                     onConfirm = { hour, minute ->
+
                         if (hour >= 12) {
                             pmHourEnd = hour - 12
+                            if(hour == 12){
+                                pmHourEnd = hour
+                            }
                             amPmEnd = "PM"
-                        } else if (hour < 12) {
+                        }else if(hour < 12){
                             amPmEnd = "AM"
                             pmHourEnd = hour
+                            if(hour == 0){
+                                pmHourEnd = 12
+                            }
                         }
 
                         selectedTimeEnd = String.format("%02d:%02d %s", pmHourEnd, minute, amPmEnd)

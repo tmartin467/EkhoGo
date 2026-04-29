@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.ekhogo.message.MessagesViewModel
 
 // Represents the different tabs in the Friends screen that's being shown
 enum class FriendsTab {
@@ -32,7 +33,7 @@ enum class FriendsTab {
 }
 
 @Composable
-fun FriendsScreen() {
+fun FriendsScreen(viewModel: MessagesViewModel, onNavigateToMessages: () -> Unit) {
     // Temporary mock data for demo purposes until login / Firebase friend data is added later
     var classmates by remember {
         mutableStateOf(

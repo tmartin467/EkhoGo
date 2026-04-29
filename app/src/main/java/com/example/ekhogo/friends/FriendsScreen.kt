@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,25 +34,29 @@ enum class FriendsTab {
 }
 
 @Composable
-fun FriendsScreen(viewModel: MessagesViewModel, onNavigateToMessages: () -> Unit) {
-    // Temporary mock data for demo purposes until login / Firebase friend data is added later
-    var classmates by remember {
-        mutableStateOf(
-            listOf(
-                Friend("1", "Tahja Martin", "Computer Science", FriendStatus.FRIENDS),
-                Friend("2", "Kristopher Arakelyan", "Computer Science", FriendStatus.FRIENDS),
-                Friend("3", "Chris Hernandez", "Computer Science", FriendStatus.REQUEST_RECEIVED),
-                Friend("4", "Jude Segundera", "Computer Science", FriendStatus.NONE)
-            )
-        )
-    }
+fun FriendsScreen(
+    viewModel: MessagesViewModel,
+    onNavigateToMessages: () -> Unit
+) {
+
+    var classmates by remember { mutableStateOf<List<Friend>>(emptyList()) }
     // selectedTab controls which friend category is displayed
     var selectedTab by remember { mutableStateOf(FriendsTab.FRIENDS) }
     // searchText is used when clicking on the add friend tab to search for a user
     var searchText by remember { mutableStateOf("") }
 
     // Connecting to the database
-    val repository = FriendsRepository()
+    val repository = remember { FriendsRepository() }
+
+    fun refreshClassmates() {
+        repository.loadUsers { users ->
+            classmates = users
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshClassmates()
+    }
 
     // filter the full classmate list based on the selected tab
     val visibleClassmates = when (selectedTab) {
@@ -193,52 +198,75 @@ fun FriendsScreen(viewModel: MessagesViewModel, onNavigateToMessages: () -> Unit
                                 )
                             }
 
-                            Button(
-                                onClick = {
-                                    classmates = classmates.map { currentFriend ->
-
-                                        if (currentFriend.id == friend.id) {
-
-                                            when (currentFriend.status) {
-
+                            Column {
+                                Button(
+                                    onClick = {
+                                            when (friend.status) {
                                                 FriendStatus.NONE -> {
-                                                    repository.sendFriendRequest(currentFriend.id)
-                                                    currentFriend.copy(status = FriendStatus.REQUEST_SENT)
+                                                    repository.sendFriendRequest(friend.id) { success ->
+                                                        if (success) {
+                                                            refreshClassmates()
+                                                        }
+                                                    }
                                                 }
 
                                                 FriendStatus.REQUEST_RECEIVED -> {
-                                                    currentFriend.copy(status = FriendStatus.FRIENDS)
+                                                    repository.acceptFriendRequest(friend.id) { success ->
+                                                        if (success) {
+                                                            refreshClassmates()
+                                                        }
+                                                    }
                                                 }
 
-                                                FriendStatus.REQUEST_SENT -> {
-                                                    currentFriend
-                                                }
+                                                FriendStatus.REQUEST_SENT -> Unit
 
                                                 FriendStatus.FRIENDS -> {
-                                                    currentFriend.copy(status = FriendStatus.NONE)
+                                                    repository.removeFriend(friend.id)  { success ->
+                                                        if (success) {
+                                                            refreshClassmates()
+                                                        }
+                                                    }
                                                 }
                                             }
-
-                                        } else {
-                                            currentFriend
+                                    },
+                                    // Button is only interactable when an action can happen
+                                    enabled = friend.status != FriendStatus.REQUEST_SENT
+                                ) {
+                                    Text(
+                                        // Update button text based on the current relationship status
+                                        when (friend.status) {
+                                            FriendStatus.NONE -> "Add"
+                                            FriendStatus.REQUEST_SENT -> "Pending"
+                                            FriendStatus.REQUEST_RECEIVED -> "Accept"
+                                            FriendStatus.FRIENDS -> "Unfriend"
                                         }
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                if (friend.status == FriendStatus.REQUEST_RECEIVED) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            repository.rejectFriendRequest(friend.id) { success ->
+                                                if (success) {
+                                                    refreshClassmates()
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Text("Decline")
                                     }
-                                },
-                                // Button is only interactable when an action can happen
-                                enabled = friend.status == FriendStatus.NONE ||
-                                        friend.status == FriendStatus.REQUEST_RECEIVED ||
-                                        friend.status == FriendStatus.FRIENDS
-                            ) {
-                                Text(
-                                    // Update button text based on the current relationship status
-                                    when (friend.status) {
-                                        FriendStatus.NONE -> "Add"
-                                        FriendStatus.REQUEST_SENT -> "Pending"
-                                        FriendStatus.REQUEST_RECEIVED -> "Accept"
-                                        FriendStatus.FRIENDS ->
-                                            if (selectedTab == FriendsTab.FRIENDS) "Unfriend" else "Friends"
+                                } else if (friend.status == FriendStatus.FRIENDS) {
+                                    Button(
+                                        onClick = {
+                                            viewModel.openConversation(friend.id)
+                                            onNavigateToMessages()
+                                        }
+                                    ) {
+                                        Text("Message")
                                     }
-                                )
+                                }
                             }
                         }
                     }

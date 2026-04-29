@@ -1,22 +1,17 @@
 package com.example.ekhogo
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
-import coil.compose.AsyncImage
-import androidx.compose.runtime.LaunchedEffect
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
@@ -38,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -47,13 +43,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.ekhogo.ToDo.ToDoClass
 import com.example.ekhogo.ToDo.ToDoHomePage
 import com.example.ekhogo.ToDo.ToDoScreen
@@ -63,7 +60,8 @@ import com.example.ekhogo.map.CampusMapScreen
 import com.example.ekhogo.message.MessagesScreen
 import com.example.ekhogo.message.MessagesViewModel
 import com.example.ekhogo.schedule.Schedule
-
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,30 +103,43 @@ fun HomeScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.height(84.dp),
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset(x = 32.dp, y = (-2).dp)
                     ) {
+                        Text(
+                            text = "EkhoGo",
+                            fontSize = 34.sp,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+
                         Image(
                             painter = painterResource(id = R.drawable.homepage_icon),
                             contentDescription = "EkhoGo logo",
-                            modifier = Modifier.size(60.dp),
-                            contentScale = ContentScale.Crop
+                            modifier = Modifier
+                                .size(75.dp)
+                                .align(Alignment.Center)
+                                .offset(x = (-85).dp),
+                            contentScale = ContentScale.Fit
                         )
-                        Text("EkhoGo", fontSize = 36.sp)
                     }
                 },
                 actions = {
                     Box {
                         // Profile Icon on the top right of the screen
-                        IconButton(onClick = { expandedMenu = true }) {
+                        IconButton(
+                            onClick = { expandedMenu = true },
+                            modifier = Modifier.offset(y = (-6).dp)
+                        ) {
                             if (profileImageUrl.isNotBlank()) {
                                 AsyncImage(
                                     model = profileImageUrl,
                                     contentDescription = "Profile Menu",
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(35.dp)
                                         .border(1.dp, Color.White, CircleShape)
                                         .clip(CircleShape),
                                     contentScale = ContentScale.Crop
@@ -243,6 +254,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
+                        .padding(top = 8.dp)
                 ) {
                     HomeButton(
                         onNavigate = { selectedTab.intValue = it },
@@ -262,7 +274,6 @@ fun HomeScreen(
                         selectedTab.intValue = 4
                     }
                 )
-
 
                 // If Maps is selected
                 3 -> CampusMapScreen()

@@ -4,9 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,7 +26,25 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            EkhoGoTheme {
+            val prefs = getSharedPreferences("app_settings", MODE_PRIVATE)
+
+            var themeMode by remember {
+                mutableStateOf(prefs.getString("theme_mode", "system") ?: "system")
+            }
+
+            val isDarkMode = when (themeMode) {
+                "dark" -> true
+                "light" -> false
+                else -> isSystemInDarkTheme()
+            }
+
+            LaunchedEffect(themeMode) {
+                prefs.edit()
+                    .putString("theme_mode", themeMode)
+                    .apply()
+            }
+
+            EkhoGoTheme(darkTheme = isDarkMode) {
                 var currentScreen by remember { mutableStateOf("login") }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -45,7 +65,10 @@ class MainActivity : ComponentActivity() {
                                 FirebaseAuth.getInstance().signOut()
                                 currentScreen = "login"
                             },
-                            toProfileScreen = { currentScreen = "profile" }
+                            toProfileScreen = { currentScreen = "profile" },
+                            isDarkMode = isDarkMode,
+                            themeMode = themeMode,
+                            onThemeModeChange = { themeMode = it }
                         )
 
                         "profile" -> ProfileScreen(

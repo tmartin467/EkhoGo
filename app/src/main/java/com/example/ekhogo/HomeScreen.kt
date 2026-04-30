@@ -68,7 +68,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onAccountLogout: () -> Unit,
-    toProfileScreen: () -> Unit
+    toProfileScreen: () -> Unit,
+    isDarkMode: Boolean,
+    themeMode: String,
+    onThemeModeChange: (String) -> Unit
 ) {
     val selectedTab = remember { mutableIntStateOf(0) }
     val messagesViewModel: MessagesViewModel = viewModel()
@@ -163,15 +166,51 @@ fun HomeScreen(
                                 onClick = {
                                     expandedMenu = false
                                     toProfileScreen()
-                                })
+                                }
+                            )
                             // Logout button and returns to the login screen
                             DropdownMenuItem(
-                                text = { Text("Logout") },
+                                text = { Text("Log Out") },
                                 onClick = {
                                     expandedMenu = false
                                     onAccountLogout()
                                 }
                             )
+                            Text(
+                                text = "Theme",
+                                modifier = Modifier.padding(
+                                    start = 16.dp,
+                                    top = 8.dp,
+                                    bottom = 4.dp
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("System Default") },
+                                onClick = {
+                                    expandedMenu = false
+                                    onThemeModeChange("system")
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("Light Mode") },
+                                onClick = {
+                                    expandedMenu = false
+                                    onThemeModeChange("light")
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("Dark Mode") },
+                                onClick = {
+                                    expandedMenu = false
+                                    onThemeModeChange("dark")
+                                }
+                            )
+
                         }
                     }
                 },
@@ -276,7 +315,7 @@ fun HomeScreen(
                 )
 
                 // If Maps is selected
-                3 -> CampusMapScreen()
+                3 -> CampusMapScreen(isDarkMode = isDarkMode)
 
                 // If Messages is selected
                 4 -> MessagesScreen(viewModel = messagesViewModel)

@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 
@@ -25,14 +27,21 @@ fun getMarkerColor(category: String): Float {
 fun CampusMap(
     locations: List<CampusLocation>,
     cameraPositionState: CameraPositionState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hasLocationPermission: Boolean
 ) {
     Card(
         modifier = modifier.fillMaxWidth()
     ) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState
+            cameraPositionState = cameraPositionState,
+            properties = MapProperties(
+                isMyLocationEnabled = hasLocationPermission
+            ),
+            uiSettings = MapUiSettings(
+                myLocationButtonEnabled = hasLocationPermission
+            )
         ) {
             locations.forEach { location ->
                 Marker(

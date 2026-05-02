@@ -18,11 +18,22 @@ import com.example.ekhogo.login.LoginScreen
 import com.example.ekhogo.login.RegisterScreen
 import com.example.ekhogo.profile.ProfileScreen
 import com.example.ekhogo.ui.theme.EkhoGoTheme
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.auth.FirebaseAuth
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Debugging for logging in
+        if (com.example.ekhogo.BuildConfig.DEBUG) {
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                DebugAppCheckProviderFactory.getInstance()
+            )
+        }
+
         enableEdgeToEdge()
 
         setContent {

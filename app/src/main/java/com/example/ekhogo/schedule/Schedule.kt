@@ -1,7 +1,5 @@
 package com.example.ekhogo.schedule
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,9 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
@@ -58,7 +52,9 @@ fun Schedule() {
     val classes = remember { mutableStateOf("") }
     val location = remember { mutableStateOf("") }
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Top,
     ) {
 
@@ -105,17 +101,16 @@ fun Schedule() {
 
             TextButton(
                 onClick = { showDialogStart = true },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp),
+                modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.textButtonColors(
                     containerColor = Color.LightGray,
                     contentColor = Color.Red
                 )
             ) {
                 Text(
-                    text = selectedTimeStart,
-                    fontSize = 20.sp,
+                    text = "Start Time",
+                    fontSize = 12.sp,
+                    maxLines = 1
                 )
             }
 
@@ -128,14 +123,14 @@ fun Schedule() {
 
                         if (hour >= 12) {
                             pmHourStart = hour - 12
-                            if(hour == 12){
+                            if (hour == 12) {
                                 pmHourStart = hour
                             }
                             amPmStart = "PM"
-                        }else if(hour < 12){
+                        } else {
                             amPmStart = "AM"
                             pmHourStart = hour
-                            if(hour == 0){
+                            if (hour == 0) {
                                 pmHourStart = 12
                             }
                         }
@@ -152,17 +147,16 @@ fun Schedule() {
 
             TextButton(
                 onClick = { showDialogEnd = true },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp),
+                modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.textButtonColors(
                     containerColor = Color.LightGray,
                     contentColor = Color.Red
                 )
             ) {
                 Text(
-                    text = selectedTimeEnd,
-                    fontSize = 20.sp,
+                    text = "End Time",
+                    fontSize = 12.sp,
+                    maxLines = 1
                 )
             }
             var amPmEnd = "AM"
@@ -173,14 +167,14 @@ fun Schedule() {
 
                         if (hour >= 12) {
                             pmHourEnd = hour - 12
-                            if(hour == 12){
+                            if (hour == 12) {
                                 pmHourEnd = hour
                             }
                             amPmEnd = "PM"
-                        }else if(hour < 12){
+                        } else {
                             amPmEnd = "AM"
                             pmHourEnd = hour
-                            if(hour == 0){
+                            if (hour == 0) {
                                 pmHourEnd = 12
                             }
                         }
@@ -194,58 +188,57 @@ fun Schedule() {
                 )
             }
 
-
             val selectedDaysText = if (selectedDays.isEmpty()) {
-                "Select Days"
+                "Select Day(s)"
             } else {
                 selectedDays.joinToString(", ")
             }
 
-            TextButton(
-                onClick = { expanded = true },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = Color.LightGray,
-                    contentColor = Color.Red
-                )
-            ) {
-                Text(
-                    text = selectedDaysText,
-                    fontSize = 20.sp,
-                )
-            }
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                daysOfWeek.forEach { day ->
-                    DropdownMenuItem(
-                        text = {
-                            Row() {
-                                Checkbox(
-                                    checked = selectedDays.contains(day),
-                                    onCheckedChange = { isChecked ->
-                                        selectedDays = if (isChecked) {
-                                            selectedDays + day
-                                        } else {
-                                            selectedDays - day
-                                        }
-                                    }
-                                )
-                                Text(day)
-                            }
-                        },
-                        onClick = {
-                            selectedDays = if (selectedDays.contains(day)) {
-                                selectedDays - day
-                            } else {
-                                selectedDays + day
-                            }
-                        }
+            Box(modifier = Modifier.weight(1f)) {
+                TextButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(
+                        containerColor = Color.LightGray,
+                        contentColor = Color.Red
                     )
+                ) {
+                    Text(
+                        text = selectedDaysText,
+                        fontSize = 12.sp,
+                        maxLines = 1
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    daysOfWeek.forEach { day ->
+                        DropdownMenuItem(
+                            text = {
+                                Row {
+                                    Checkbox(
+                                        checked = selectedDays.contains(day),
+                                        onCheckedChange = { isChecked ->
+                                            selectedDays = if (isChecked) {
+                                                selectedDays + day
+                                            } else {
+                                                selectedDays - day
+                                            }
+                                        }
+                                    )
+                                    Text(day)
+                                }
+                            },
+                            onClick = {
+                                selectedDays = if (selectedDays.contains(day)) {
+                                    selectedDays - day
+                                } else {
+                                    selectedDays + day
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -302,7 +295,6 @@ fun Schedule() {
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         )
         {
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -340,6 +332,3 @@ fun Schedule() {
 
     }
 }
-
-
-

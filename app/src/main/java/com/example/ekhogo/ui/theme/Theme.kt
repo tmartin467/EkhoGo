@@ -8,21 +8,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Red80,
-    secondary = RedGrey80,
-    tertiary = Rose80,
-    background = Color(0xFF1A1111),
-    surface = Color(0xFF1A1111),
+    primary = Red40,
+    secondary = Color(0xFF2F3336),
+    tertiary = Rose40,
+
+    background = Color(0xFF0F0F0F),
+    surface = Color(0xFF1E1E1E),
+
     primaryContainer = Red40,
-    secondaryContainer = MessageBubbleGrey,
-    tertiaryContainer = Rose40,
-    onPrimary = Color(0xFF690005),
-    onSecondary = Color(0xFF2C1513),
-    onTertiary = Color(0xFF3B0908),
-    onBackground = Color(0xFFFFEDEA),
-    onSurface = Color(0xFFFFEDEA),
+    secondaryContainer = Color(0xFF2B2B2B),
+    tertiaryContainer = Color(0xFF2F3336),
+
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+
+    onBackground = Color(0xFFE7E9EA),
+    onSurface = Color(0xFFE7E9EA),
+
     onPrimaryContainer = Color.White,
-    onSecondaryContainer = Color.White
+    onSecondaryContainer = Color(0xFFE7E9EA),
+    onTertiaryContainer = Color(0xFFE7E9EA)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -32,14 +38,14 @@ private val LightColorScheme = lightColorScheme(
     background = RedSurface,
     surface = RedSurface,
     primaryContainer = Red40,
-    secondaryContainer = MessageBubbleGrey,
+    secondaryContainer = Color(0xFFE8E3EC),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
     onBackground = RedOnSurface,
     onSurface = RedOnSurface,
     onPrimaryContainer = Color.White,
-    onSecondaryContainer = Color.White
+    onSecondaryContainer = Color(0xFF231919)
 )
 
 @Composable

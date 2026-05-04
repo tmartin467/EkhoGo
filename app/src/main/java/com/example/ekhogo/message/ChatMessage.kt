@@ -1,4 +1,6 @@
 package com.example.ekhogo.message
 
-class ChatMessage {
-}
+data class ChatMessage(
+    val text: String,
+    val isSentByMe: Boolean
+)

@@ -13,16 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 // Represents one chat message
-data class ChatMessage(
-    val text: String,
-    val isSentByMe: Boolean
-)
 
-data class ConversationPreview(
-    val otherUserId: String,
-    val otherUserName: String,
-    val lastMessage: String
-)
 
 class MessagesViewModel : ViewModel() {
 
@@ -215,7 +206,9 @@ class MessagesViewModel : ViewModel() {
             val conversationData = hashMapOf(
                 "participants" to listOf(currentUserId, otherUserId).sorted(),
                 "lastMessage" to text,
-                "lastMessageTimestamp" to FieldValue.serverTimestamp()
+                "lastMessageTimestamp" to FieldValue.serverTimestamp(),
+                "numOfParticipants" to listOf(currentUserId, otherUserId).sorted().size,
+                "deletedFor" to emptyList<String>()
             )
 
             val batch = db.batch()
@@ -274,6 +267,8 @@ class MessagesViewModel : ViewModel() {
 
                     val otherUserId = participants.firstOrNull { it != currentUserId }
                     val lastMessage = document.getString("lastMessage") ?: ""
+                    val numOfParticipants = document.getLong("numOfParticipants")?.toInt() ?: 0
+
 
                     if (otherUserId == null) {
                         remaining -= 1
@@ -293,7 +288,8 @@ class MessagesViewModel : ViewModel() {
                             previewSlots[index] = ConversationPreview(
                                 otherUserId = otherUserId,
                                 otherUserName = otherUserName,
-                                lastMessage = lastMessage
+                                lastMessage = lastMessage,
+                                numOfParticipants = numOfParticipants
                             )
 
                             remaining -= 1
@@ -305,7 +301,8 @@ class MessagesViewModel : ViewModel() {
                             previewSlots[index] = ConversationPreview(
                                 otherUserId = otherUserId,
                                 otherUserName = "Unknown User",
-                                lastMessage = lastMessage
+                                lastMessage = lastMessage,
+                                numOfParticipants = numOfParticipants
                             )
 
                             remaining -= 1

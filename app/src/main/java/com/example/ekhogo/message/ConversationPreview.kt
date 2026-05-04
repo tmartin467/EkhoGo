@@ -1,4 +1,8 @@
 package com.example.ekhogo.message
 
-class ConversationPreview {
-}
+data class ConversationPreview(
+    val otherUserId: String,
+    val otherUserName: String,
+    val lastMessage: String,
+    val numOfParticipants: Int
+)

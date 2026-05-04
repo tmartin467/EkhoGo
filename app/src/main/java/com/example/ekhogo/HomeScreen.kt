@@ -268,7 +268,7 @@ fun HomeScreen(
                 3 -> CampusMapScreen()
 
                 // If Messages is selected
-                4 -> MessagesScreen(viewModel = messagesViewModel)
+                4 -> MessagesScreen(viewModel = messagesViewModel,)
 
                 // If Schedule button on homescreen is selected
                 5 -> Schedule()

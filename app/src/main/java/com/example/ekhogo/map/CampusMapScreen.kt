@@ -1,8 +1,10 @@
 package com.example.ekhogo.map
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,7 +12,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,62 +32,80 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
-fun CampusMapScreen() {
+fun CampusMapScreen(isDarkMode: Boolean) {
     val csuci = LatLng(34.1629, -119.0430)
 
-    var searchText by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
+    val categories = listOf(
+        "All",
+        "Campus Dining",
+        "Academic Building",
+        "Student Housing",
+        "Student Services"
+    )
 
-    val filteredLocations: List<CampusLocation> = remember(searchText) {
-        if (searchText.isBlank()) {
-            emptyList()
-        } else {
-            campusLocations.filter { location: CampusLocation ->
-                location.name.contains(searchText, ignoreCase = true)
-            }
+    var searchText by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("All") }
+
+    val filteredLocations: List<CampusLocation> = remember(searchText, selectedCategory) {
+        campusLocations.filter { location ->
+            val matchesSearch =
+                searchText.isBlank() ||
+                        location.name.contains(searchText, ignoreCase = true) ||
+                        location.description.contains(searchText, ignoreCase = true)
+
+            val matchesCategory =
+                selectedCategory == "All" || location.description == selectedCategory
+
+            matchesSearch && matchesCategory
         }
     }
-
-    val markersToShow: List<CampusLocation> =
-        if (searchText.isBlank()) {
-            emptyList()
-        } else {
-            filteredLocations
-        }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuci, 16f)
     }
 
-
-
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         CampusMap(
-            locations = markersToShow,
+            locations = filteredLocations,
             cameraPositionState = cameraPositionState,
+            isDarkMode = isDarkMode,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(420.dp)
         )
 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            categories.forEach { category ->
+                FilterChip(
+                    selected = selectedCategory == category,
+                    onClick = { selectedCategory = category },
+                    label = { Text(category) }
+                )
+            }
+        }
+
         OutlinedTextField(
             value = searchText,
-            onValueChange = {
-                searchText = it
-                expanded = it.isNotBlank() && filteredLocations.isNotEmpty()
-            },
+            onValueChange = { searchText = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search campus locations") },
+            placeholder = { Text("Search campus locations") },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = "Search")
+            },
             singleLine = true
         )
 
-        if (filteredLocations.isNotEmpty() && searchText.isNotBlank()) {
+        if (searchText.isNotBlank() && filteredLocations.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {

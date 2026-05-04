@@ -56,7 +56,10 @@ class MainActivity : ComponentActivity() {
             }
 
             EkhoGoTheme(darkTheme = isDarkMode) {
-                var currentScreen by remember { mutableStateOf("login") }
+                var currentScreen by remember {
+                    mutableStateOf(
+                        if (FirebaseAuth.getInstance().currentUser != null) "home" else "login")
+                }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     when (currentScreen) {

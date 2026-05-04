@@ -15,16 +15,35 @@ fun deleteMessageThread(otherUserId: String){
             .sorted()
             .joinToString("_")
 
-        db.collection("conversations")
-            .document(conversationId)
-            .update(
-                "deletedFor", FieldValue.arrayUnion(uid)
-            )
+    val doc= db.collection("conversations")
+        .document(conversationId)
+
+    doc.update("deletedFor", FieldValue.arrayUnion(uid))
+        .addOnSuccessListener {
+            doc.get().addOnSuccessListener { document ->
+                val deletedFor = document.get("deletedFor") as? List<String> ?: emptyList()
+                val participants = document.getLong("numOfParticipants")
+
+                if (deletedFor.size.toLong() == participants) {
+
+                    val messagesRef = doc.collection("messages")
+
+                    messagesRef.get().addOnSuccessListener { snapshot ->
+                        val batch = db.batch()
+
+                        for (message in snapshot.documents) {
+                            batch.delete(message.reference)
+                        }
+
+                        batch.commit().addOnSuccessListener {
+                            doc.delete()
+                        }
+                    }
 
 
-
-
-
-
+                   doc.delete()
+                }
+            }
+        }
 
 }

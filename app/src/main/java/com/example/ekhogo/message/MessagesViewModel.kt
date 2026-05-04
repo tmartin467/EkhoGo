@@ -49,6 +49,11 @@ class MessagesViewModel : ViewModel() {
     private var latestMessageTimestamp = 0L
     private var hasLoadedInitialSnapshot = false
 
+    private val _selectedOtherUser = MutableStateFlow("")
+
+    val selectedOtherUser = _selectedOtherUser.asStateFlow()
+
+
     init {
         refreshCurrentUserId()
     }
@@ -101,10 +106,11 @@ class MessagesViewModel : ViewModel() {
                 _messages.value = documents.map { document ->
                     val text = document.getString("text") ?: ""
                     val senderId = document.getString("senderId") ?: ""
-
+                    val id = document.id
                     ChatMessage(
                         text = text,
-                        isSentByMe = senderId == currentUserId
+                        isSentByMe = senderId == currentUserId,
+                        id = id
                     )
                 }
 
@@ -141,6 +147,10 @@ class MessagesViewModel : ViewModel() {
         return listOf(currentUserId, otherUserId)
             .sorted()
             .joinToString("_")
+    }
+
+    fun selectOtherUser(name: String) {
+        _selectedOtherUser.value = name
     }
 
     fun openConversation(otherUserId: String) {
@@ -268,6 +278,7 @@ class MessagesViewModel : ViewModel() {
                     val otherUserId = participants.firstOrNull { it != currentUserId }
                     val lastMessage = document.getString("lastMessage") ?: ""
                     val numOfParticipants = document.getLong("numOfParticipants")?.toInt() ?: 0
+                    val deletedFor = document.get("deletedFor") as? List<String> ?: emptyList()
 
 
                     if (otherUserId == null) {
@@ -289,7 +300,8 @@ class MessagesViewModel : ViewModel() {
                                 otherUserId = otherUserId,
                                 otherUserName = otherUserName,
                                 lastMessage = lastMessage,
-                                numOfParticipants = numOfParticipants
+                                numOfParticipants = numOfParticipants,
+                                deletedFor = deletedFor
                             )
 
                             remaining -= 1
@@ -302,7 +314,8 @@ class MessagesViewModel : ViewModel() {
                                 otherUserId = otherUserId,
                                 otherUserName = "Unknown User",
                                 lastMessage = lastMessage,
-                                numOfParticipants = numOfParticipants
+                                numOfParticipants = numOfParticipants,
+                                deletedFor = deletedFor
                             )
 
                             remaining -= 1
@@ -320,6 +333,32 @@ class MessagesViewModel : ViewModel() {
 
     fun onMessagesScreenClosed() {
         isMessagesScreenOpen = false
+    }
+
+    fun unsendMessage(message: String){
+
+        val convoID = activeConversationId?: return
+        val message: String = message
+
+        FirebaseFirestore.getInstance()
+            .collection("conversations")
+            .document(convoID)
+            .collection("messages")
+            .document(message)
+            .delete()
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { document ->
+                val name = document.getString("name")
+
+                sendMessage("${name} unsent a message")
+            }
+
     }
 
     override fun onCleared() {

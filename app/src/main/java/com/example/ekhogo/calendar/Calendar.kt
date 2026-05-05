@@ -32,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +57,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -116,7 +118,7 @@ fun MonthDayCell(
             if (date != null) {
                 Text(
                     text = date.dayOfMonth.toString(),
-                    color = if (isSelected) Color.White else Color.Black
+                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground
                 )
             }
 
@@ -165,6 +167,19 @@ fun CalendarScreen() {
 
     var selectedEvent by remember { mutableStateOf<Event?>(null) }
 
+    var isAllDay by remember { mutableStateOf(false) }
+
+    var eventLocation by remember { mutableStateOf("") }
+    var eventNotes by remember { mutableStateOf("") }
+
+    var eventStartDate by remember { mutableStateOf(selectedDate) }
+    var eventEndDate by remember { mutableStateOf(selectedDate) }
+
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+
+    val dialogDateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
+
     val googleSignInClient = remember {
         GoogleSignIn.getClient(
             context,
@@ -188,9 +203,25 @@ fun CalendarScreen() {
             val email = account.email
             checkLink = true
 
+            scope.launch {
+                val accessToken = getAccessToken(context, account)
+
+                if (accessToken != null) {
+                    fetchGoogleEventsAndSaveToFirestore(accessToken)
+
+                    eventsFireBase { resultMap ->
+                        events = resultMap
+                    }
+                } else {
+                    println("Google access token was null")
+                }
+            }
+
         } catch (e: Exception) {
         }
     }
+
+
 
     LaunchedEffect(Unit) {
         eventsFireBase { result ->
@@ -212,6 +243,11 @@ fun CalendarScreen() {
                 onClick = {
                     selectedEvent = null // reset edit mode
                     eventText = "" // clear old text
+                    eventLocation = ""
+                    eventNotes = ""
+                    isAllDay = false
+                    eventStartDate = selectedDate
+                    eventEndDate = selectedDate
                     showAddEventDialog = true
                 }
             ) {
@@ -243,7 +279,29 @@ fun CalendarScreen() {
                         } else {
                             GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN)
                                 .signOut()
+
                             checkLink = false
+
+                            val user = FirebaseAuth.getInstance().currentUser
+                            val uid = user?.uid
+                            val db = FirebaseFirestore.getInstance()
+
+                            if (uid != null) {
+                                db.collection("users")
+                                    .document(uid)
+                                    .collection("events")
+                                    .whereEqualTo("source", "google")
+                                    .get()
+                                    .addOnSuccessListener { result ->
+                                        for (doc in result) {
+                                            doc.reference.delete()
+                                        }
+
+                                        eventsFireBase { resultMap ->
+                                            events = resultMap
+                                        }
+                                    }
+                            }
                         }
                     },
                     modifier = Modifier.padding(start = 16.dp)
@@ -317,7 +375,11 @@ fun CalendarScreen() {
                                 .weight(1f)
                                 .height(56.dp)
                                 .padding(2.dp)
-                                .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(8.dp))
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(8.dp)
+                                )
                                 .clickable(enabled = cellDate != null) {
                                     selectedDate = cellDate!!
                                 },
@@ -335,37 +397,77 @@ fun CalendarScreen() {
                                                 else -> Color.Transparent
                                             }
                                         ),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.TopStart
                                 ) {
                                     Text(
                                         text = dayNumber.toString(),
-                                        color = if (isSelected) Color.White else Color.Black
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                                     )
 
-                                    if (cellDate != null && events.containsKey(cellDate)) {
-                                        val eventDots = events[cellDate]?.take(3) ?: emptyList()
+                                    if (cellDate != null) {
 
-                                        Row(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomCenter)
-                                                .padding(bottom = 4.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                        ) {
-                                            eventDots.forEach { event ->
+                                        val eventsForDay = events.values.flatten().filter { event ->
+                                            val start = LocalDate.parse(event.startDate)
+                                            val end = LocalDate.parse(event.endDate)
+                                            cellDate >= start && cellDate <= end
+                                        }
 
-                                                val dotColor = when (event.color) {
-                                                    "blue" -> Color.Blue
-                                                    "green" -> Color.Green
-                                                    "yellow" -> Color.Yellow
-                                                    else -> Color.Red
+                                        if (eventsForDay.isNotEmpty()) {
+                                            val eventBars = eventsForDay.take(3)
+
+                                            Row(
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .padding(bottom = 3.dp),
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                eventBars.forEach { event ->
+                                                    val start = LocalDate.parse(event.startDate)
+                                                    val end = LocalDate.parse(event.endDate)
+
+                                                    val barColor = when (event.color) {
+                                                        "blue" -> Color.Blue
+                                                        "green" -> Color.Green
+                                                        "yellow" -> Color.Yellow
+                                                        else -> Color.Red
+                                                    }
+
+                                                    val shape = when {
+                                                        cellDate == start && cellDate == end -> RoundedCornerShape(
+                                                            50
+                                                        )
+
+                                                        cellDate == start -> RoundedCornerShape(
+                                                            topStart = 50.dp,
+                                                            bottomStart = 50.dp
+                                                        )
+
+                                                        cellDate == end -> RoundedCornerShape(
+                                                            topEnd = 50.dp,
+                                                            bottomEnd = 50.dp
+                                                        )
+
+                                                        else -> RoundedCornerShape(0.dp)
+                                                    }
+
+                                                    if (start == end) {
+                                                        // single-day → dot
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(5.dp)
+                                                                .background(barColor, CircleShape)
+                                                        )
+                                                    } else {
+                                                        // multi-day → bar
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .width(26.dp)
+                                                                .height(5.dp)
+                                                                .background(barColor, shape)
+                                                        )
+                                                    }
                                                 }
-
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(5.dp)
-                                                        .background(dotColor, CircleShape)
-                                                )
-
                                             }
                                         }
                                     }
@@ -385,15 +487,18 @@ fun CalendarScreen() {
                 fontSize = 18.sp
             )
 
-            val selectedEvents = events[selectedDate]
+            val selectedEvents = events.values.flatten().filter { event ->
+                val start = LocalDate.parse(event.startDate)
+                val end = LocalDate.parse(event.endDate)
+                !selectedDate.isBefore(start) && !selectedDate.isAfter(end)
+            }
 
-            if (selectedEvents != null) {
+            if (selectedEvents.isNotEmpty()) {
                 for ((index, event) in selectedEvents.withIndex()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                            .padding(start = 16.dp)
                             .clickable {
                                 selectedEvent = event
                                 showAddEventDialog = true
@@ -414,8 +519,8 @@ fun CalendarScreen() {
                         Spacer(modifier = Modifier.width(10.dp))
 
                         Text(
-                            text = if (event.timeStart == "Start Time") {
-                                "${event.title}"
+                            text = if (event.isAllDay) {
+                                "${event.title} • All day"
                             } else {
                                 "${event.title} : ${event.timeStart} - ${event.timeEnd}"
                             },
@@ -461,6 +566,8 @@ fun CalendarScreen() {
                                 "yellow" -> Color.Yellow
                                 else -> Color.Red
                             }
+
+                            isAllDay = it.isAllDay
                         }
                     }
                     Row(
@@ -480,6 +587,71 @@ fun CalendarScreen() {
                             onValueChange = { eventText = it },
                             placeholder = { Text("Add title") },
                             modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = eventLocation,
+                        onValueChange = { eventLocation = it },
+                        placeholder = { Text("Location") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = eventNotes,
+                        onValueChange = { eventNotes = it },
+                        placeholder = { Text("Notes") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("All day")
+
+                        Switch(
+                            checked = isAllDay,
+                            onCheckedChange = { isAllDay = it }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Start date")
+                        Text(
+                            text = eventStartDate.format(dialogDateFormatter),
+                            modifier = Modifier.clickable {
+                                showStartDatePicker = true
+                            }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("End date")
+                        Text(
+                            text = eventEndDate.format(dialogDateFormatter),
+                            modifier = Modifier.clickable {
+                                showEndDatePicker = true
+                            }
                         )
                     }
 
@@ -509,37 +681,39 @@ fun CalendarScreen() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Start")
+                    if (!isAllDay) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Start")
 
-                        TextButton(onClick = { showStartPicker = true }) {
-                            Text(
-                                "${startHour}:${
-                                    startMinute.toString().padStart(2, '0')
-                                } ${if (isStartAM) "AM" else "PM"}"
-                            )
+                            TextButton(onClick = { showStartPicker = true }) {
+                                Text(
+                                    "${startHour}:${
+                                        startMinute.toString().padStart(2, '0')
+                                    } ${if (isStartAM) "AM" else "PM"}"
+                                )
+                            }
                         }
-                    }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("End")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("End")
 
-                        TextButton(onClick = { showEndPicker = true }) {
-                            Text(
-                                "${endHour}:${
-                                    endMinute.toString().padStart(2, '0')
-                                } ${if (isEndAM) "AM" else "PM"}"
-                            )
+                            TextButton(onClick = { showEndPicker = true }) {
+                                Text(
+                                    "${endHour}:${
+                                        endMinute.toString().padStart(2, '0')
+                                    } ${if (isEndAM) "AM" else "PM"}"
+                                )
+                            }
                         }
                     }
 
@@ -587,20 +761,28 @@ fun CalendarScreen() {
                             val uid = user?.uid
                             val db = FirebaseFirestore.getInstance()
 
-                            val selectedTimeStart =
+                            val selectedTimeStart = if (isAllDay) {
+                                ""
+                            } else {
                                 "${startHour}:${
                                     startMinute.toString().padStart(2, '0')
                                 } ${if (isStartAM) "AM" else "PM"}"
+                            }
 
-                            val selectedTimeEnd =
+                            val selectedTimeEnd = if (isAllDay) {
+                                ""
+                            } else {
                                 "${endHour}:${
                                     endMinute.toString().padStart(2, '0')
                                 } ${if (isEndAM) "AM" else "PM"}"
+                            }
 
                             if (uid != null && eventText.isNotBlank()) {
                                 val eventData = hashMapOf(
                                     "title" to eventText,
-                                    "date" to selectedDate.toString(),
+                                    "date" to eventStartDate.toString(),
+                                    "startDate" to eventStartDate.toString(),
+                                    "endDate" to eventEndDate.toString(),
                                     "timeStart" to selectedTimeStart,
                                     "timeEnd" to selectedTimeEnd,
                                     "color" to when (selectedColor) {
@@ -610,6 +792,9 @@ fun CalendarScreen() {
                                         Color.Yellow -> "yellow"
                                         else -> "red"
                                     },
+                                    "isAllDay" to isAllDay,
+                                    "location" to eventLocation,
+                                    "notes" to eventNotes,
                                     "createdAt" to System.currentTimeMillis()
                                 )
 
@@ -648,7 +833,7 @@ fun CalendarScreen() {
                     ) {
                         Text("Save")
                     }
-                    
+
                     if (selectedEvent != null) {
                         TextButton(
                             onClick = {
@@ -680,15 +865,43 @@ fun CalendarScreen() {
                     }
 
                     TextButton(
-                        onClick = { showAddEventDialog = false },
+                        onClick = {
+                            showAddEventDialog = false
+                            selectedEvent = null
+                            eventText = ""
+                            eventLocation = ""
+                            eventNotes = ""
+                            isAllDay = false
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Cancel")
                     }
                 }
+                if (showStartDatePicker) {
+                    DatePickerDialog(
+                        onDateSelected = { date ->
+                            eventStartDate = date
+                            showStartDatePicker = false
+                        },
+                        onDismiss = { showStartDatePicker = false }
+                    )
+                }
+
+                if (showEndDatePicker) {
+                    DatePickerDialog(
+                        onDateSelected = { date ->
+                            eventEndDate = date
+                            showEndDatePicker = false
+                        },
+                        onDismiss = { showEndDatePicker = false }
+                    )
+                }
+
             }
         }
     }
+
 }
 
 

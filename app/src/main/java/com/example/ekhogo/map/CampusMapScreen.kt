@@ -62,7 +62,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     var selectedCategories by remember { mutableStateOf(emptySet<String>()) }
     var showAmenityIcons by remember { mutableStateOf(true) }
     var showSuggestionDialog by remember { mutableStateOf(false) }
-    var selectedAmenitySummary by remember { mutableStateOf<BuildingAmenitySummary?>(null) }
+    val selectedAmenitySummary = remember { mutableStateOf<BuildingAmenitySummary?>(null) }
     val suggestionRepository = remember { AmenitySuggestionRepository() }
     var approvedSuggestions by remember { mutableStateOf(emptyList<BuildingAmenity>()) }
     var hasLocationPermissions by remember {
@@ -138,7 +138,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     val displayedAmenitySummaries =
         if (showAmenityIcons) visibleAmenitySummaries else emptyList()
 
-    val visibleSelectedAmenitySummary = selectedAmenitySummary?.takeIf { selectedSummary ->
+    val visibleSelectedAmenitySummary = selectedAmenitySummary.value?.takeIf { selectedSummary ->
         displayedAmenitySummaries.any { summary ->
             summary.building.id == selectedSummary.building.id
         }
@@ -161,8 +161,8 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             hasLocationPermission = hasLocationPermissions,
             amenitySummaries = displayedAmenitySummaries,
             selectedAmenitySummary = visibleSelectedAmenitySummary,
-            onAmenityClick = { selectedAmenitySummary = it },
-            onAmenityDismiss = { selectedAmenitySummary = null },
+            onAmenityClick = { selectedAmenitySummary.value = it },
+            onAmenityDismiss = { selectedAmenitySummary.value = null },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(420.dp)
@@ -178,7 +178,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                 selected = selectedCategories.isEmpty(),
                 onClick = {
                     selectedCategories = emptySet()
-                    selectedAmenitySummary = null
+                    selectedAmenitySummary.value = null
                 },
                 label = { Text("All") }
             )
@@ -192,7 +192,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                             } else {
                                 selectedCategories + category
                             }
-                        selectedAmenitySummary = null
+                        selectedAmenitySummary.value = null
                     },
                     label = { Text(category) }
                 )
@@ -202,7 +202,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                 onClick = {
                     showAmenityIcons = !showAmenityIcons
                     if (!showAmenityIcons) {
-                        selectedAmenitySummary = null
+                        selectedAmenitySummary.value = null
                     }
                 },
                 label = { Text("Amenities") }
@@ -273,8 +273,7 @@ private fun SuggestAmenityDialog(
     var selectedType by remember { mutableStateOf(AmenityType.WATER_FOUNTAIN) }
     var description by remember { mutableStateOf("") }
     var buildingMenuOpen by remember { mutableStateOf(false) }
-    var isSubmitting by remember { mutableStateOf(false) }
-    var submitFailed by remember { mutableStateOf(false) }
+    val submitErrorMessage = remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -316,33 +315,31 @@ private fun SuggestAmenityDialog(
                     value = description,
                     onValueChange = {
                         description = it
-                        submitFailed = false
+                        submitErrorMessage.value = null
                     },
                     label = { Text("Where is it?") },
                     placeholder = { Text("Example: First floor near Room 1432") }
                 )
 
-                if (submitFailed) {
-                    Text("Could not submit suggestion. Please try again.")
+                submitErrorMessage.value?.let { message ->
+                    Text(message)
                 }
             }
         },
         confirmButton = {
             Button(
-                enabled = description.isNotBlank() && !isSubmitting,
+                enabled = description.isNotBlank(),
                 onClick = {
-                    isSubmitting = true
-                    submitFailed = false
                     repository.submitSuggestion(
                         building = selectedBuilding,
                         type = selectedType,
                         description = description
                     ) { success ->
-                        isSubmitting = false
                         if (success) {
                             onDismiss()
                         } else {
-                            submitFailed = true
+                            submitErrorMessage.value =
+                                "Could not submit suggestion. Please try again."
                         }
                     }
                 }

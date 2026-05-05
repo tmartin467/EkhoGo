@@ -52,6 +52,7 @@ fun getMarkerColor(category: String): Float {
 
 @Composable
 fun CampusMap(
+    modifier: Modifier = Modifier,
     locations: List<CampusLocation>,
     cameraPositionState: CameraPositionState,
     isDarkMode: Boolean,
@@ -59,8 +60,7 @@ fun CampusMap(
     amenitySummaries: List<BuildingAmenitySummary> = emptyList(),
     selectedAmenitySummary: BuildingAmenitySummary? = null,
     onAmenityClick: (BuildingAmenitySummary) -> Unit = {},
-    onAmenityDismiss: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onAmenityDismiss: () -> Unit = {}
 ) {
     val darkMapStyle = """
         [

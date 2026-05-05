@@ -96,6 +96,8 @@ class FriendsRepository {
                                                 val uid = document.getString("uid") ?: document.id
                                                 val name = document.getString("name") ?: return@mapNotNull null
                                                 val major = document.getString("major") ?: ""
+                                                val bio = document.getString("bio") ?: ""
+                                                val profileImageUrl = document.getString("profileImageUrl") ?: ""
 
                                                 if (uid == currentUserId) {
                                                     return@mapNotNull null
@@ -112,6 +114,8 @@ class FriendsRepository {
                                                     id = uid,
                                                     name = name,
                                                     major = major,
+                                                    bio = bio,
+                                                    profileImageUrl = profileImageUrl,
                                                     status = status
                                                 )
                                             }.sortedBy { it.name.lowercase() }

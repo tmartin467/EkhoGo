@@ -1,6 +1,8 @@
 package com.example.ekhogo.map
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +12,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -45,7 +48,9 @@ fun CampusMap(
     isDarkMode: Boolean,
     hasLocationPermission: Boolean,
     amenitySummaries: List<BuildingAmenitySummary> = emptyList(),
+    selectedAmenitySummary: BuildingAmenitySummary? = null,
     onAmenityClick: (BuildingAmenitySummary) -> Unit = {},
+    onAmenityDismiss: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val darkMapStyle = """
@@ -112,46 +117,58 @@ fun CampusMap(
     Card(
         modifier = modifier.fillMaxWidth()
     ) {
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            properties = mapProperties,
-            uiSettings = MapUiSettings(
-                myLocationButtonEnabled = hasLocationPermission
-            )
-        ) {
-            locations.forEach { location ->
-                key(location.name, location.latLng) {
-                    Marker(
-                        state = rememberUpdatedMarkerState(position = location.latLng),
-                        title = location.name,
-                        snippet = location.description,
-                        icon = BitmapDescriptorFactory.defaultMarker(
-                            getMarkerColor(location.description)
+        Box(modifier = Modifier.fillMaxSize()) {
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                properties = mapProperties,
+                uiSettings = MapUiSettings(
+                    myLocationButtonEnabled = hasLocationPermission
+                )
+            ) {
+                locations.forEach { location ->
+                    key(location.name, location.latLng) {
+                        Marker(
+                            state = rememberUpdatedMarkerState(position = location.latLng),
+                            title = location.name,
+                            snippet = location.description,
+                            icon = BitmapDescriptorFactory.defaultMarker(
+                                getMarkerColor(location.description)
+                            )
                         )
-                    )
+                    }
+                }
+
+                amenitySummaries.forEach { summary ->
+                    key("amenity-${summary.building.id}") {
+                        MarkerComposable(
+                            summary.building.id,
+                            summary.countText,
+                            state = rememberUpdatedMarkerState(
+                                position = amenityBadgePosition(summary.building.latLng)
+                            ),
+                            title = summary.building.name,
+                            snippet = summary.countText,
+                            zIndex = 1f,
+                            onClick = {
+                                onAmenityClick(summary)
+                                true
+                            }
+                        ) {
+                            AmenityCountBadge(summary)
+                        }
+                    }
                 }
             }
 
-            amenitySummaries.forEach { summary ->
-                key("amenity-${summary.building.id}") {
-                    MarkerComposable(
-                        summary.building.id,
-                        summary.countText,
-                        state = rememberUpdatedMarkerState(
-                            position = amenityBadgePosition(summary.building.latLng)
-                        ),
-                        title = summary.building.name,
-                        snippet = summary.countText,
-                        zIndex = 1f,
-                        onClick = {
-                            onAmenityClick(summary)
-                            true
-                        }
-                    ) {
-                        AmenityCountBadge(summary)
-                    }
-                }
+            selectedAmenitySummary?.let { summary ->
+                AmenityDetailsBox(
+                    summary = summary,
+                    onDismiss = onAmenityDismiss,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp)
+                )
             }
         }
     }
@@ -176,6 +193,49 @@ private fun AmenityCountBadge(summary: BuildingAmenitySummary) {
                 fontWeight = FontWeight.Bold,
                 lineHeight = 11.sp
             )
+        }
+    }
+}
+
+@Composable
+private fun AmenityDetailsBox(
+    summary: BuildingAmenitySummary,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = summary.building.name,
+                    style = MaterialTheme.typography.titleSmall
+                )
+
+                TextButton(onClick = onDismiss) {
+                    Text("Close")
+                }
+            }
+
+            Text(
+                text = "${summary.waterCount} water fountains, ${summary.vendingCount} vending machines",
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            summary.amenities.forEach { amenity ->
+                Text(
+                    text = "${amenity.type.label}: ${amenity.description}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }

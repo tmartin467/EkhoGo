@@ -26,5 +26,17 @@ val hardcodedBuildingAmenities = listOf(
         buildingId = "sierra-hall",
         type = AmenityType.VENDING_MACHINE,
         description =  "First floor, near Room 1432"
+    ),
+    BuildingAmenity(
+        id = "sierra-vending-2",
+        buildingId = "sierra-hall",
+        type = AmenityType.VENDING_MACHINE,
+        description =  "Second floor, near Room 2432"
+    ),
+    BuildingAmenity(
+        id = "sierra-water-2",
+        buildingId = "sierra-hall",
+        type = AmenityType.WATER_FOUNTAIN,
+        description =  "Second floor, near Room 2432"
     )
 )

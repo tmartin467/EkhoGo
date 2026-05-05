@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -137,7 +136,9 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             isDarkMode = isDarkMode,
             hasLocationPermission = hasLocationPermissions,
             amenitySummaries = visibleAmenitySummaries,
+            selectedAmenitySummary = visibleSelectedAmenitySummary,
             onAmenityClick = { selectedAmenitySummary = it },
+            onAmenityDismiss = { selectedAmenitySummary = null },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(420.dp)
@@ -172,10 +173,6 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             singleLine = true
         )
 
-        visibleSelectedAmenitySummary?.let { summary ->
-            AmenityDetailsCard(summary = summary)
-        }
-
         if (searchText.isNotBlank() && filteredLocations.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth()
@@ -199,33 +196,6 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AmenityDetailsCard(summary: BuildingAmenitySummary) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = summary.building.name,
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Text(
-                text = "${summary.waterCount} water fountains, ${summary.vendingCount} vending machines",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            summary.amenities.forEach { amenity ->
-                Text(
-                    text = "${amenity.type.label}: ${amenity.description}",
-                    style = MaterialTheme.typography.bodySmall
-                )
             }
         }
     }

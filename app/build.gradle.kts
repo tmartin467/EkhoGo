@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.places)
     implementation(libs.firebase.appcheck.debug)
+    implementation(libs.androidx.foundation)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

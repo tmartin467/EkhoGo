@@ -43,8 +43,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     val csuci = LatLng(34.1629, -119.0430)
     val context = LocalContext.current
 
-    val categories = listOf(
-        "All",
+    val categoryFilters = listOf(
         "Campus Dining",
         "Academic Building",
         "Student Housing",
@@ -52,7 +51,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     )
 
     var searchText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("All") }
+    var selectedCategories by remember { mutableStateOf(emptySet<String>()) }
     var showAmenityIcons by remember { mutableStateOf(true) }
     var selectedAmenitySummary by remember { mutableStateOf<BuildingAmenitySummary?>(null) }
     var hasLocationPermissions by remember {
@@ -87,7 +86,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         }
     }
 
-    val filteredLocations: List<CampusLocation> = remember(searchText, selectedCategory) {
+    val filteredLocations: List<CampusLocation> = remember(searchText, selectedCategories) {
         campusLocations.filter { location ->
             val matchesSearch =
                 searchText.isBlank() ||
@@ -95,7 +94,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                         location.description.contains(searchText, ignoreCase = true)
 
             val matchesCategory =
-                selectedCategory == "All" || location.description == selectedCategory
+                selectedCategories.isEmpty() || location.description in selectedCategories
 
             matchesSearch && matchesCategory
         }
@@ -154,11 +153,24 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            categories.forEach { category ->
+            FilterChip(
+                selected = selectedCategories.isEmpty(),
+                onClick = {
+                    selectedCategories = emptySet()
+                    selectedAmenitySummary = null
+                },
+                label = { Text("All") }
+            )
+            categoryFilters.forEach { category ->
                 FilterChip(
-                    selected = selectedCategory == category,
+                    selected = category in selectedCategories,
                     onClick = {
-                        selectedCategory = category
+                        selectedCategories =
+                            if (category in selectedCategories) {
+                                selectedCategories - category
+                            } else {
+                                selectedCategories + category
+                            }
                         selectedAmenitySummary = null
                     },
                     label = { Text(category) }

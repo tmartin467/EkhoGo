@@ -26,7 +26,8 @@ fun eventsFireBase(onResult: (Map<LocalDate, List<Event>>) -> Unit) {
                     title = doc.getString("title") ?: "",
                     date = doc.getString("date") ?: continue,
                     timeStart = doc.getString("timeStart") ?: "",
-                    timeEnd = doc.getString("timeEnd") ?: ""
+                    timeEnd = doc.getString("timeEnd") ?: "",
+                    color = doc.getString("color") ?: "red"
                 )
 
                 val date = LocalDate.parse(event.date)

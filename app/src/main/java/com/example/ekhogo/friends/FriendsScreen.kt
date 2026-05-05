@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -25,6 +26,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.ekhogo.message.MessagesViewModel
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
 
 // Represents the different tabs in the Friends screen that's being shown
 enum class FriendsTab {
@@ -45,6 +59,8 @@ fun FriendsScreen(
     // searchText is used when clicking on the add friend tab to search for a user
     var searchText by remember { mutableStateOf("") }
 
+    var selectedFriendId by remember { mutableStateOf<String?>(null) }
+
     // Connecting to the database
     val repository = remember { FriendsRepository() }
 
@@ -56,6 +72,16 @@ fun FriendsScreen(
 
     LaunchedEffect(Unit) {
         refreshClassmates()
+    }
+
+    if (selectedFriendId != null) {
+        FriendProfileScreen(
+            friendId = selectedFriendId!!,
+            onBack = { selectedFriendId = null },
+            viewModel = viewModel,
+            onNavigateToMessages = onNavigateToMessages
+        )
+        return
     }
 
     // filter the full classmate list based on the selected tab
@@ -172,18 +198,40 @@ fun FriendsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(displayedClassmates) { friend ->
+                items(items = displayedClassmates, key = { friend -> friend.id }) { friend ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
+                            .clickable {
+                                selectedFriendId = friend.id
+                            }
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            if (friend.profileImageUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = friend.profileImageUrl,
+                                    contentDescription = "${friend.name} profile picture",
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Default profile picture",
+                                    modifier = Modifier.size(56.dp)
+                                )
+                            }
+
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -192,10 +240,22 @@ fun FriendsScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
+
                                 Text(
                                     text = friend.major,
                                     style = MaterialTheme.typography.bodySmall
                                 )
+
+                                if (friend.bio.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = friend.bio,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
 
                             Column {
@@ -262,8 +322,15 @@ fun FriendsScreen(
                                         onClick = {
                                             viewModel.openConversation(friend.id)
                                             onNavigateToMessages()
-                                        }
+                                        },
+                                        modifier = Modifier.height(36.dp)
                                     ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Email,
+                                            contentDescription = "Message",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text("Message")
                                     }
                                 }

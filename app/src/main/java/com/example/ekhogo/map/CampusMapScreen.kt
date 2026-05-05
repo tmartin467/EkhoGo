@@ -53,6 +53,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
 
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
+    var showAmenityIcons by remember { mutableStateOf(true) }
     var selectedAmenitySummary by remember { mutableStateOf<BuildingAmenitySummary?>(null) }
     var hasLocationPermissions by remember {
         mutableStateOf(
@@ -114,8 +115,11 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         }
     }
 
+    val displayedAmenitySummaries =
+        if (showAmenityIcons) visibleAmenitySummaries else emptyList()
+
     val visibleSelectedAmenitySummary = selectedAmenitySummary?.takeIf { selectedSummary ->
-        visibleAmenitySummaries.any { summary ->
+        displayedAmenitySummaries.any { summary ->
             summary.building.id == selectedSummary.building.id
         }
     }
@@ -135,7 +139,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             cameraPositionState = cameraPositionState,
             isDarkMode = isDarkMode,
             hasLocationPermission = hasLocationPermissions,
-            amenitySummaries = visibleAmenitySummaries,
+            amenitySummaries = displayedAmenitySummaries,
             selectedAmenitySummary = visibleSelectedAmenitySummary,
             onAmenityClick = { selectedAmenitySummary = it },
             onAmenityDismiss = { selectedAmenitySummary = null },
@@ -160,6 +164,16 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                     label = { Text(category) }
                 )
             }
+            FilterChip(
+                selected = showAmenityIcons,
+                onClick = {
+                    showAmenityIcons = !showAmenityIcons
+                    if (!showAmenityIcons) {
+                        selectedAmenitySummary = null
+                    }
+                },
+                label = { Text("Amenities") }
+            )
         }
 
         OutlinedTextField(

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Card
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -12,7 +13,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 
 fun getMarkerColor(category: String): Float {
     return when (category) {
@@ -105,14 +106,16 @@ fun CampusMap(
             )
         ) {
             locations.forEach { location ->
-                Marker(
-                    state = MarkerState(position = location.latLng),
-                    title = location.name,
-                    snippet = location.description,
-                    icon = BitmapDescriptorFactory.defaultMarker(
-                        getMarkerColor(location.description)
+                key(location.name, location.latLng) {
+                    Marker(
+                        state = rememberUpdatedMarkerState(position = location.latLng),
+                        title = location.name,
+                        snippet = location.description,
+                        icon = BitmapDescriptorFactory.defaultMarker(
+                            getMarkerColor(location.description)
+                        )
                     )
-                )
+                }
             }
         }
     }

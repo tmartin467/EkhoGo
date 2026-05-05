@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,12 +20,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +61,10 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     var searchText by remember { mutableStateOf("") }
     var selectedCategories by remember { mutableStateOf(emptySet<String>()) }
     var showAmenityIcons by remember { mutableStateOf(true) }
+    var showSuggestionDialog by remember { mutableStateOf(false) }
     var selectedAmenitySummary by remember { mutableStateOf<BuildingAmenitySummary?>(null) }
+    val suggestionRepository = remember { AmenitySuggestionRepository() }
+    var approvedSuggestions by remember { mutableStateOf(emptyList<BuildingAmenity>()) }
     var hasLocationPermissions by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -86,6 +97,16 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         }
     }
 
+    DisposableEffect(suggestionRepository) {
+        val registration = suggestionRepository.listenApprovedSuggestions {
+            approvedSuggestions = it
+        }
+
+        onDispose {
+            registration.remove()
+        }
+    }
+
     val filteredLocations: List<CampusLocation> = remember(searchText, selectedCategories) {
         campusLocations.filter { location ->
             val matchesSearch =
@@ -100,10 +121,10 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         }
     }
 
-    val buildingAmenitySummaries = remember {
+    val buildingAmenitySummaries = remember(approvedSuggestions) {
         buildAmenitySummaries(
             buildings = campusBuildings,
-            amenities = hardcodedBuildingAmenities
+            amenities = hardcodedBuildingAmenities + approvedSuggestions
         )
     }
 
@@ -199,6 +220,21 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             singleLine = true
         )
 
+        Button(
+            onClick = { showSuggestionDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Suggest an amenity")
+        }
+
+        if (showSuggestionDialog) {
+            SuggestAmenityDialog(
+                repository = suggestionRepository,
+                buildings = campusBuildings,
+                onDismiss = { showSuggestionDialog = false }
+            )
+        }
+
         if (searchText.isNotBlank() && filteredLocations.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth()
@@ -225,4 +261,99 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             }
         }
     }
+}
+
+@Composable
+private fun SuggestAmenityDialog(
+    repository: AmenitySuggestionRepository,
+    buildings: List<CampusBuilding>,
+    onDismiss: () -> Unit
+) {
+    var selectedBuilding by remember { mutableStateOf(buildings.first()) }
+    var selectedType by remember { mutableStateOf(AmenityType.WATER_FOUNTAIN) }
+    var description by remember { mutableStateOf("") }
+    var buildingMenuOpen by remember { mutableStateOf(false) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var submitFailed by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Suggest amenity") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box {
+                    OutlinedButton(onClick = { buildingMenuOpen = true }) {
+                        Text(selectedBuilding.name)
+                    }
+
+                    DropdownMenu(
+                        expanded = buildingMenuOpen,
+                        onDismissRequest = { buildingMenuOpen = false }
+                    ) {
+                        buildings.forEach { building ->
+                            DropdownMenuItem(
+                                text = { Text(building.name) },
+                                onClick = {
+                                    selectedBuilding = building
+                                    buildingMenuOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AmenityType.entries.forEach { type ->
+                        FilterChip(
+                            selected = selectedType == type,
+                            onClick = { selectedType = type },
+                            label = { Text(type.label) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = {
+                        description = it
+                        submitFailed = false
+                    },
+                    label = { Text("Where is it?") },
+                    placeholder = { Text("Example: First floor near Room 1432") }
+                )
+
+                if (submitFailed) {
+                    Text("Could not submit suggestion. Please try again.")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = description.isNotBlank() && !isSubmitting,
+                onClick = {
+                    isSubmitting = true
+                    submitFailed = false
+                    repository.submitSuggestion(
+                        building = selectedBuilding,
+                        type = selectedType,
+                        description = description
+                    ) { success ->
+                        isSubmitting = false
+                        if (success) {
+                            onDismiss()
+                        } else {
+                            submitFailed = true
+                        }
+                    }
+                }
+            ) {
+                Text("Submit")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

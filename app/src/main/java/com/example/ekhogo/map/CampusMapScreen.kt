@@ -39,7 +39,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
-fun CampusMapScreen() {
+fun CampusMapScreen(isDarkMode: Boolean) {
     val csuci = LatLng(34.1629, -119.0430)
     val context = LocalContext.current
 
@@ -112,6 +112,7 @@ fun CampusMapScreen() {
         CampusMap(
             locations = filteredLocations,
             cameraPositionState = cameraPositionState,
+            isDarkMode = isDarkMode,
             hasLocationPermission = hasLocationPermissions,
             modifier = Modifier
                 .fillMaxWidth()

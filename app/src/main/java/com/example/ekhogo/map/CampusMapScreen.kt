@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +54,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
 
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
+    var selectedAmenitySummary by remember { mutableStateOf<BuildingAmenitySummary?>(null) }
     var hasLocationPermissions by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -99,6 +101,26 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         }
     }
 
+    val buildingAmenitySummaries = remember {
+        buildAmenitySummaries(
+            buildings = campusBuildings,
+            amenities = hardcodedBuildingAmenities
+        )
+    }
+
+    val visibleAmenitySummaries = remember(filteredLocations, buildingAmenitySummaries) {
+        val visibleLocationNames = filteredLocations.map { it.name }.toSet()
+        buildingAmenitySummaries.filter { summary ->
+            summary.building.name in visibleLocationNames
+        }
+    }
+
+    val visibleSelectedAmenitySummary = selectedAmenitySummary?.takeIf { selectedSummary ->
+        visibleAmenitySummaries.any { summary ->
+            summary.building.id == selectedSummary.building.id
+        }
+    }
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(csuci, 16f)
     }
@@ -114,6 +136,8 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             cameraPositionState = cameraPositionState,
             isDarkMode = isDarkMode,
             hasLocationPermission = hasLocationPermissions,
+            amenitySummaries = visibleAmenitySummaries,
+            onAmenityClick = { selectedAmenitySummary = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(420.dp)
@@ -128,7 +152,10 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             categories.forEach { category ->
                 FilterChip(
                     selected = selectedCategory == category,
-                    onClick = { selectedCategory = category },
+                    onClick = {
+                        selectedCategory = category
+                        selectedAmenitySummary = null
+                    },
                     label = { Text(category) }
                 )
             }
@@ -144,6 +171,10 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             },
             singleLine = true
         )
+
+        visibleSelectedAmenitySummary?.let { summary ->
+            AmenityDetailsCard(summary = summary)
+        }
 
         if (searchText.isNotBlank() && filteredLocations.isNotEmpty()) {
             Card(
@@ -168,6 +199,33 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AmenityDetailsCard(summary: BuildingAmenitySummary) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = summary.building.name,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = "${summary.waterCount} water fountains, ${summary.vendingCount} vending machines",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            summary.amenities.forEach { amenity ->
+                Text(
+                    text = "${amenity.type.label}: ${amenity.description}",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

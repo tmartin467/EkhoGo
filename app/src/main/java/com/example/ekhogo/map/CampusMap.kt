@@ -1,5 +1,6 @@
 package com.example.ekhogo.map
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -14,12 +16,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ekhogo.R
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -30,6 +37,8 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberUpdatedMarkerState
+
+private const val AMENITY_BADGE_MIN_ZOOM = 17f
 
 fun getMarkerColor(category: String): Float {
     return when (category) {
@@ -113,6 +122,11 @@ fun CampusMap(
             null
         }
     )
+    val showAmenityOverlays by remember(cameraPositionState) {
+        derivedStateOf {
+            cameraPositionState.position.zoom >= AMENITY_BADGE_MIN_ZOOM
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth()
@@ -139,36 +153,40 @@ fun CampusMap(
                     }
                 }
 
-                amenitySummaries.forEach { summary ->
-                    key("amenity-${summary.building.id}") {
-                        MarkerComposable(
-                            summary.building.id,
-                            summary.countText,
-                            state = rememberUpdatedMarkerState(
-                                position = amenityBadgePosition(summary.building.latLng)
-                            ),
-                            title = summary.building.name,
-                            snippet = summary.countText,
-                            zIndex = 1f,
-                            onClick = {
-                                onAmenityClick(summary)
-                                true
+                if (showAmenityOverlays) {
+                    amenitySummaries.forEach { summary ->
+                        key("amenity-${summary.building.id}") {
+                            MarkerComposable(
+                                summary.building.id,
+                                summary.countText,
+                                state = rememberUpdatedMarkerState(
+                                    position = amenityBadgePosition(summary.building.latLng)
+                                ),
+                                title = summary.building.name,
+                                snippet = summary.countText,
+                                zIndex = 1f,
+                                onClick = {
+                                    onAmenityClick(summary)
+                                    true
+                                }
+                            ) {
+                                AmenityCountBadge(summary)
                             }
-                        ) {
-                            AmenityCountBadge(summary)
                         }
                     }
                 }
             }
 
-            selectedAmenitySummary?.let { summary ->
-                AmenityDetailsBox(
-                    summary = summary,
-                    onDismiss = onAmenityDismiss,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(12.dp)
-                )
+            if (showAmenityOverlays) {
+                selectedAmenitySummary?.let { summary ->
+                    AmenityDetailsBox(
+                        summary = summary,
+                        onDismiss = onAmenityDismiss,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(12.dp)
+                    )
+                }
             }
         }
     }
@@ -179,21 +197,49 @@ private fun AmenityCountBadge(summary: BuildingAmenitySummary) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.primary,
-        shape = RoundedCornerShape(6.dp),
-        shadowElevation = 2.dp
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = 3.dp
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "W${summary.waterCount} V${summary.vendingCount}",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 11.sp
+            AmenityIconCount(
+                count = summary.waterCount,
+                imageRes = R.drawable.amenity_water_fountain,
+                contentDescription = "Water fountains"
+            )
+            AmenityIconCount(
+                count = summary.vendingCount,
+                imageRes = R.drawable.amenity_vending_machine,
+                contentDescription = "Vending machines"
             )
         }
+    }
+}
+
+@Composable
+private fun AmenityIconCount(
+    count: Int,
+    imageRes: Int,
+    contentDescription: String
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = count.toString(),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 13.sp
+        )
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(15.dp)
+        )
     }
 }
 

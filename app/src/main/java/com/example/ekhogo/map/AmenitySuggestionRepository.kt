@@ -37,11 +37,17 @@ class AmenitySuggestionRepository {
     }
 
     fun listenApprovedSuggestions(
-       onResult: (List<BuildingAmenity>) -> Unit
+        onResult: (List<BuildingAmenity>) -> Unit,
+        onError: (Exception) -> Unit = { }
     ): ListenerRegistration {
         return db.collection("amenity_suggestions")
             .whereEqualTo("status", "approved")
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+
                 val amenities = snapshot?.documents.orEmpty().mapNotNull { doc ->
                     val buildingId = doc.getString("buildingId") ?: return@mapNotNull null
                     val typeName = doc.getString("type") ?: return@mapNotNull null

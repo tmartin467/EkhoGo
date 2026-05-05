@@ -27,8 +27,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +59,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     )
 
     var searchText by remember { mutableStateOf("") }
+    var showSearchResults by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(emptySet<String>()) }
     var showAmenityIcons by remember { mutableStateOf(true) }
     var showSuggestionDialog by remember { mutableStateOf(false) }
@@ -71,10 +72,10 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
         )
     }
 
@@ -98,9 +99,14 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     }
 
     DisposableEffect(suggestionRepository) {
-        val registration = suggestionRepository.listenApprovedSuggestions {
-            approvedSuggestions = it
-        }
+        val registration = suggestionRepository.listenApprovedSuggestions(
+            onResult = { suggestions: List<BuildingAmenity> ->
+                approvedSuggestions = suggestions
+            },
+            onError = {
+                // Keep current approvedSuggestions instead of clearing them.
+            }
+        )
 
         onDispose {
             registration.remove()
@@ -211,7 +217,10 @@ fun CampusMapScreen(isDarkMode: Boolean) {
 
         OutlinedTextField(
             value = searchText,
-            onValueChange = { searchText = it },
+            onValueChange = {
+                searchText = it
+                showSearchResults = true
+            },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search campus locations") },
             leadingIcon = {
@@ -244,18 +253,21 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                         .fillMaxWidth()
                         .heightIn(max = 180.dp)
                 ) {
-                    items(filteredLocations) { location ->
-                        Text(
-                            text = location.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    cameraPositionState.position =
-                                        CameraPosition.fromLatLngZoom(location.latLng, 18f)
-                                    searchText = location.name
-                                }
-                                .padding(12.dp)
-                        )
+                    if (searchText.isNotBlank() && showSearchResults) {
+                        items(filteredLocations) { location ->
+                            Text(
+                                text = location.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        cameraPositionState.position =
+                                            CameraPosition.fromLatLngZoom(location.latLng, 18f)
+                                        searchText = location.name
+                                        showSearchResults = false
+                                    }
+                                    .padding(12.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -274,6 +286,8 @@ private fun SuggestAmenityDialog(
     var description by remember { mutableStateOf("") }
     var buildingMenuOpen by remember { mutableStateOf(false) }
     val submitErrorMessage = remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -328,13 +342,18 @@ private fun SuggestAmenityDialog(
         },
         confirmButton = {
             Button(
-                enabled = description.isNotBlank(),
+                enabled = description.isNotBlank() && !isSubmitting,
                 onClick = {
+                    isSubmitting = true
+                    submitErrorMessage.value = null
+
                     repository.submitSuggestion(
                         building = selectedBuilding,
                         type = selectedType,
                         description = description
                     ) { success ->
+                        isSubmitting = false
+
                         if (success) {
                             onDismiss()
                         } else {

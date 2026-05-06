@@ -1,7 +1,6 @@
 import java.util.Properties
 
 
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -39,8 +38,8 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/DEPENDENCIES"
-            }
         }
+    }
 
     buildTypes {
         release {
@@ -60,6 +59,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -75,6 +75,9 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.places)
+    implementation(libs.firebase.appcheck.debug)
+    implementation(libs.androidx.foundation)
+    implementation(libs.ui)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

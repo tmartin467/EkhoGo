@@ -1,5 +1,10 @@
 package com.example.ekhogo
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -46,9 +51,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.ekhogo.ToDo.ToDoClass
@@ -59,6 +66,7 @@ import com.example.ekhogo.friends.FriendsScreen
 import com.example.ekhogo.map.CampusMapScreen
 import com.example.ekhogo.message.MessagesScreen
 import com.example.ekhogo.message.MessagesViewModel
+import com.example.ekhogo.notifications.MessagingTokenRepository
 import com.example.ekhogo.schedule.Schedule
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -90,9 +98,13 @@ fun HomeScreen(
         indicatorColor = MaterialTheme.colorScheme.primaryContainer
     )
 
+    NotificationPermissionPrompt()
+
     LaunchedEffect(currentUser?.uid) {
         val uid = currentUser?.uid
         if (uid != null) {
+            MessagingTokenRepository.saveCurrentUserToken()
+
             db.collection("users")
                 .document(uid)
                 .get()
@@ -330,6 +342,28 @@ fun HomeScreen(
                 }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionPrompt() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = {}
+    )
+
+    LaunchedEffect(Unit) {
+        val alreadyGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!alreadyGranted) {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }

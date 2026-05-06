@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.ekhogo.login.LoginScreen
 import com.example.ekhogo.login.RegisterScreen
+import com.example.ekhogo.notifications.MessagingTokenRepository
 import com.example.ekhogo.profile.ProfileScreen
 import com.example.ekhogo.ui.theme.EkhoGoTheme
 import com.google.firebase.appcheck.FirebaseAppCheck
@@ -76,8 +77,10 @@ class MainActivity : ComponentActivity() {
                         "home" -> HomeScreen(
                             modifier = Modifier.padding(innerPadding),
                             onAccountLogout = {
-                                FirebaseAuth.getInstance().signOut()
-                                currentScreen = "login"
+                                MessagingTokenRepository.deleteCurrentUserToken {
+                                    FirebaseAuth.getInstance().signOut()
+                                    currentScreen = "login"
+                                }
                             },
                             toProfileScreen = { currentScreen = "profile" },
                             isDarkMode = isDarkMode,

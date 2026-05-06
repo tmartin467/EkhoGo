@@ -4,46 +4,40 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
+fun deleteMessageThread(conversationId: String) {
 
-fun deleteMessageThread(otherUserId: String){
+    val db = FirebaseFirestore.getInstance()
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        val db = FirebaseFirestore.getInstance()
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val docRef = db.collection("conversations").document(conversationId)
 
-
-        val conversationId = listOf(uid, otherUserId)
-            .sorted()
-            .joinToString("_")
-
-    val doc= db.collection("conversations")
-        .document(conversationId)
-
-    doc.update("deletedFor", FieldValue.arrayUnion(uid))
+    docRef.update("deletedFor", FieldValue.arrayUnion(uid))
         .addOnSuccessListener {
-            doc.get().addOnSuccessListener { document ->
+
+            docRef.get().addOnSuccessListener { document ->
+
                 val deletedFor = document.get("deletedFor") as? List<String> ?: emptyList()
-                val participants = document.getLong("numOfParticipants")
+                val participants = document.get("participants") as? List<String> ?: emptyList()
 
-                if (deletedFor.size.toLong() == participants) {
+                val allDeleted = participants.all { it in deletedFor }
 
-                    val messagesRef = doc.collection("messages")
+                if (allDeleted) {
 
-                    messagesRef.get().addOnSuccessListener { snapshot ->
-                        val batch = db.batch()
+                    docRef.collection("messages")
+                        .get()
+                        .addOnSuccessListener { snapshot ->
 
-                        for (message in snapshot.documents) {
-                            batch.delete(message.reference)
+                            val batch = db.batch()
+
+                            snapshot.documents.forEach { message ->
+                                batch.delete(message.reference)
+                            }
+
+                            batch.commit().addOnSuccessListener {
+                                docRef.delete()
+                            }
                         }
-
-                        batch.commit().addOnSuccessListener {
-                            doc.delete()
-                        }
-                    }
-
-
-                   doc.delete()
                 }
             }
         }
-
 }

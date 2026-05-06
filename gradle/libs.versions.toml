@@ -16,6 +16,7 @@ foundationLayout = "1.10.6"
 places = "5.1.1"
 firebaseAppcheckDebug = "19.0.2"
 foundationVersion = "1.11.0"
+uiVersion = "1.11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -41,6 +42,7 @@ androidx-compose-foundation-layout = { group = "androidx.compose.foundation", na
 places = { group = "com.google.android.libraries.places", name = "places", version.ref = "places" }
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "firebaseAppcheckDebug" }
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
+ui = { group = "androidx.compose.ui", name = "ui", version.ref = "uiVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

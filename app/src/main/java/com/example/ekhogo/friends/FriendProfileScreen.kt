@@ -155,7 +155,11 @@ fun FriendProfileScreen(
 
                 Button(
                     onClick = {
-                        viewModel.openConversation(friendId)
+                        //viewModel.openConversation(friendId, false)
+                        viewModel.startDirectConversation(friendId) { conversationId ->
+                            viewModel.openConversation(conversationId, false)
+                            onNavigateToMessages()
+                        }
                         onNavigateToMessages()
                     },
                     modifier = Modifier.fillMaxWidth()

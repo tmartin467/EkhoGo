@@ -318,10 +318,13 @@ fun FriendsScreen(
                                         Text("Decline")
                                     }
                                 } else if (friend.status == FriendStatus.FRIENDS) {
+
                                     Button(
                                         onClick = {
-                                            viewModel.openConversation(friend.id)
-                                            onNavigateToMessages()
+                                            viewModel.startDirectConversation(friend.id) { conversationId ->
+                                                viewModel.openConversation(conversationId, false)
+                                                onNavigateToMessages()
+                                            }
                                         },
                                         modifier = Modifier.height(36.dp)
                                     ) {

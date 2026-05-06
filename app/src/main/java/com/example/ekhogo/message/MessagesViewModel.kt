@@ -53,6 +53,10 @@ class MessagesViewModel : ViewModel() {
 
     val selectedOtherUser = _selectedOtherUser.asStateFlow()
 
+    private val _isGroupChat = MutableStateFlow(false)
+
+    val isGroupChat = _isGroupChat.asStateFlow()
+
 
     init {
         refreshCurrentUserId()
@@ -87,6 +91,7 @@ class MessagesViewModel : ViewModel() {
                 onResult(false)
             }
     }
+
     private fun startMessagesListener() {
         val conversationId = activeConversationId ?: return
         if (currentUserId.isBlank()) return
@@ -110,7 +115,8 @@ class MessagesViewModel : ViewModel() {
                     ChatMessage(
                         text = text,
                         isSentByMe = senderId == currentUserId,
-                        id = id
+                        id = id,
+                        senderId = senderId
                     )
                 }
 
@@ -153,30 +159,55 @@ class MessagesViewModel : ViewModel() {
         _selectedOtherUser.value = name
     }
 
-    fun openConversation(otherUserId: String) {
+    fun openConversation(conversationId: String, isGroup: Boolean) {
         if (currentUserId.isBlank()) return
+        activeConversationId = conversationId
+        _isGroupChat.value = isGroup
+        _isInConversation.value = true
+        _messageError.value = null
+        _messages.value = emptyList()
+        latestSeenTimestamp = 0L
+        latestMessageTimestamp = 0L
+        hasLoadedInitialSnapshot = false
+        startMessagesListener()
 
-        isFriendWith(otherUserId) { isFriend ->
-            if (!isFriend) {
-                _messageError.value = "You can only message accepted friends."
-                return@isFriendWith
-            }
+    }
 
-            activeOtherUserId = otherUserId
-            activeConversationId = getConversationId(currentUserId, otherUserId)
-            _isInConversation.value = true
-            _messageError.value = null
-            _messages.value = emptyList()
-            latestSeenTimestamp = 0L
-            latestMessageTimestamp = 0L
-            hasLoadedInitialSnapshot = false
-            startMessagesListener()
+    fun createGroupConversation(
+        groupName: String,
+        selectedUserIds: List<String>,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        if (currentUserId.isBlank()) {
+            onComplete(false)
+            return
         }
+
+        val participants = (selectedUserIds + currentUserId).distinct()
+
+        val conversationRef = db.collection("conversations").document()
+
+        val conversationData = hashMapOf(
+            "groupName" to groupName,
+            "participants" to participants,
+            "lastMessage" to "",
+            "lastMessageTimestamp" to FieldValue.serverTimestamp(),
+            "numOfParticipants" to participants.size,
+            "isGroup" to true,
+            "deletedFor" to emptyList<String>()
+        )
+
+        conversationRef.set(conversationData)
+            .addOnSuccessListener {
+                onComplete(true)
+            }
+            .addOnFailureListener {
+                onComplete(false)
+            }
     }
 
     fun closeConversation() {
         activeConversationId = null
-        activeOtherUserId = null
         _isInConversation.value = false
         _messages.value = emptyList()
         _messageError.value = null
@@ -187,183 +218,212 @@ class MessagesViewModel : ViewModel() {
             onComplete(false)
             return
         }
-        val otherUserId = activeOtherUserId ?: run {
-            onComplete(false)
-            return
-        }
+
 
         if (text.isBlank() || !refreshCurrentUserId()) {
             onComplete(false)
             return
         }
 
-        isFriendWith(otherUserId) { isFriend ->
-            if (!isFriend) {
-                _messageError.value = "You can only message accepted friends."
-                onComplete(false)
-                return@isFriendWith
+
+        val conversationRef = db.collection("conversations").document(conversationId)
+        val messageRef = conversationRef.collection("messages").document()
+
+        val messageData = hashMapOf(
+            "text" to text,
+            "senderId" to currentUserId,
+            "timestamp" to FieldValue.serverTimestamp()
+        )
+
+        val conversationData = hashMapOf(
+            "lastMessage" to text,
+            "lastMessageTimestamp" to FieldValue.serverTimestamp(),
+            "deletedFor" to emptyList<String>()
+        )
+
+        val batch = db.batch()
+        batch.set(conversationRef, conversationData, SetOptions.merge())
+        batch.set(messageRef, messageData)
+
+        batch.commit()
+            .addOnSuccessListener {
+                _messageError.value = null
+                Log.d("FIREBASE", "Message sent successfully!")
+                onComplete(true)
             }
-
-            val conversationRef = db.collection("conversations").document(conversationId)
-            val messageRef = conversationRef.collection("messages").document()
-
-            val messageData = hashMapOf(
-                "text" to text,
-                "senderId" to currentUserId,
-                "timestamp" to FieldValue.serverTimestamp()
-            )
-
-            val conversationData = hashMapOf(
-                "participants" to listOf(currentUserId, otherUserId).sorted(),
-                "lastMessage" to text,
-                "lastMessageTimestamp" to FieldValue.serverTimestamp(),
-                "numOfParticipants" to listOf(currentUserId, otherUserId).sorted().size,
-                "deletedFor" to emptyList<String>()
-            )
-
-            val batch = db.batch()
-            batch.set(conversationRef, conversationData, SetOptions.merge())
-            batch.set(messageRef, messageData)
-
-            batch.commit()
-                .addOnSuccessListener {
-                    _messageError.value = null
-                    Log.d("FIREBASE", "Message sent successfully!")
-                    onComplete(true)
-                }
-                .addOnFailureListener { e ->
-                    Log.e("FIREBASE", "Error sending message", e)
-                    _messageError.value = "Could not send message."
-                    onComplete(false)
-                }
-        }
+            .addOnFailureListener { e ->
+                Log.e("FIREBASE", "Error sending message", e)
+                _messageError.value = "Could not send message."
+                onComplete(false)
+            }
+        //}
     }
 
     fun loadConversationsPreview() {
         if (!refreshCurrentUserId()) return
 
         conversationsListenerRegistration?.remove()
-        conversationsListenerRegistration = db.collection("conversations")
-            .whereArrayContains("participants", currentUserId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("FIREBASE", "Error loading conversation previews", error)
-                    return@addSnapshotListener
-                }
+        conversationsListenerRegistration =
+            db.collection("conversations")
+                .whereArrayContains("participants", currentUserId)
+                .addSnapshotListener { snapshot, error ->
 
-                val documents = snapshot?.documents.orEmpty()
-                    .sortedByDescending { document ->
-                        document.getTimestamp("lastMessageTimestamp")?.toDate()?.time ?: 0L
+                    if (error != null) {
+                        Log.e("FIREBASE", "Error loading conversation previews", error)
+                        return@addSnapshotListener
                     }
 
-                if (documents.isEmpty()) {
-                    _conversationPreviews.value = emptyList()
-                    return@addSnapshotListener
-                }
+                    val documents = snapshot?.documents.orEmpty()
+                        .sortedByDescending {
+                            it.getTimestamp("lastMessageTimestamp")?.toDate()?.time ?: 0L
+                        }
 
-                val previewSlots = MutableList<ConversationPreview?>(documents.size) { null }
-                var remaining = documents.size
-
-                fun publishIfReady() {
-                    if (remaining == 0) {
-                        _conversationPreviews.value = previewSlots.filterNotNull()
-                    }
-                }
-
-                documents.forEachIndexed { index, document ->
-                    val participants = (document.get("participants") as? List<*>)
-                        ?.filterIsInstance<String>()
-                        ?: emptyList()
-
-                    val otherUserId = participants.firstOrNull { it != currentUserId }
-                    val lastMessage = document.getString("lastMessage") ?: ""
-                    val numOfParticipants = document.getLong("numOfParticipants")?.toInt() ?: 0
-                    val deletedFor = document.get("deletedFor") as? List<String> ?: emptyList()
-
-
-                    if (otherUserId == null) {
-                        remaining -= 1
-                        publishIfReady()
-                        return@forEachIndexed
+                    if (documents.isEmpty()) {
+                        _conversationPreviews.value = emptyList()
+                        return@addSnapshotListener
                     }
 
-                    db.collection("users")
-                        .document(otherUserId)
-                        .get()
-                        .addOnSuccessListener { userDocument ->
-                            val otherUserName = userDocument.getString("name")
-                                ?.takeIf { it.isNotBlank() }
-                                ?: userDocument.getString("email")
-                                ?: "Unknown User"
+                    val previews = mutableListOf<ConversationPreview>()
+                    var count = documents.size
 
-                            previewSlots[index] = ConversationPreview(
-                                otherUserId = otherUserId,
-                                otherUserName = otherUserName,
-                                lastMessage = lastMessage,
-                                numOfParticipants = numOfParticipants,
-                                deletedFor = deletedFor
+                    fun publish() {
+                        if (count == 0) {
+                            _conversationPreviews.value = previews.toList()
+                        }
+                    }
+
+                    documents.forEach { document ->
+
+                        val participants = (document.get("participants") as? List<*>)
+                            ?.filterIsInstance<String>()
+                            ?: emptyList()
+
+                        val isGroup = document.getBoolean("isGroup") ?: false
+                        val lastMessage = document.getString("lastMessage") ?: ""
+                        val deletedFor = document.get("deletedFor") as? List<String> ?: emptyList()
+
+                        if (isGroup) {
+                            val groupName = document.getString("groupName") ?: "Group Chat"
+
+                            previews.add(
+                                ConversationPreview(
+                                    conversationId = document.id,
+                                    otherUserId = "",
+                                    otherUserName = groupName,
+                                    lastMessage = lastMessage,
+                                    numOfParticipants = participants.size,
+                                    deletedFor = deletedFor,
+                                    isGroup = true
+                                )
                             )
 
-                            remaining -= 1
-                            publishIfReady()
+                            count--
+                            publish()
+                            return@forEach
                         }
-                        .addOnFailureListener { e ->
-                            Log.e("FIREBASE", "Error loading conversation user", e)
 
-                            previewSlots[index] = ConversationPreview(
-                                otherUserId = otherUserId,
-                                otherUserName = "Unknown User",
-                                lastMessage = lastMessage,
-                                numOfParticipants = numOfParticipants,
-                                deletedFor = deletedFor
-                            )
+                        val otherUserId = participants.firstOrNull { it != currentUserId }
 
-                            remaining -= 1
-                            publishIfReady()
+                        if (otherUserId == null) {
+                            count--
+                            publish()
+                            return@forEach
                         }
+
+                        db.collection("users")
+                            .document(otherUserId)
+                            .get()
+                            .addOnSuccessListener { userDoc ->
+
+                                val otherUserName =
+                                    userDoc.getString("name")
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?: userDoc.getString("email")
+                                        ?: "Unknown User"
+
+                                previews.add(
+                                    ConversationPreview(
+                                        conversationId = document.id,
+                                        otherUserId = otherUserId,
+                                        otherUserName = otherUserName,
+                                        lastMessage = lastMessage,
+                                        numOfParticipants = participants.size,
+                                        deletedFor = deletedFor,
+                                        isGroup = false
+                                    )
+                                )
+
+                                count--
+                                publish()
+                            }
+                    }
                 }
-            }
     }
 
-    fun onMessagesScreenOpened() {
-        isMessagesScreenOpen = true
-        latestSeenTimestamp = latestMessageTimestamp
-        _unreadCount.value = 0
-    }
+        fun onMessagesScreenOpened() {
+            isMessagesScreenOpen = true
+            latestSeenTimestamp = latestMessageTimestamp
+            _unreadCount.value = 0
+        }
 
-    fun onMessagesScreenClosed() {
-        isMessagesScreenOpen = false
-    }
+        fun onMessagesScreenClosed() {
+            isMessagesScreenOpen = false
+        }
 
-    fun unsendMessage(message: String){
 
-        val convoID = activeConversationId?: return
-        val message: String = message
+    fun startDirectConversation(otherUserId: String, onComplete: (String) -> Unit) {
+        if (!refreshCurrentUserId()) return
 
-        FirebaseFirestore.getInstance()
-            .collection("conversations")
-            .document(convoID)
-            .collection("messages")
-            .document(message)
-            .delete()
+        val conversationId = getConversationId(currentUserId, otherUserId)
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val ref = db.collection("conversations").document(conversationId)
 
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(uid)
-            .get()
-            .addOnSuccessListener { document ->
-                val name = document.getString("name")
+        ref.get().addOnSuccessListener { doc ->
+            if (!doc.exists()) {
+                val data = hashMapOf(
+                    "participants" to listOf(currentUserId, otherUserId),
+                    "lastMessage" to "",
+                    "lastMessageTimestamp" to FieldValue.serverTimestamp(),
+                    "isGroup" to false,
+                    "deletedFor" to emptyList<String>()
+                )
 
-                sendMessage("${name} unsent a message")
+                ref.set(data)
             }
 
+            onComplete(conversationId)
+        }
     }
 
-    override fun onCleared() {
-        messagesListenerRegistration?.remove()
-        conversationsListenerRegistration?.remove()
-        super.onCleared()
+        fun unsendMessage(message: String) {
+
+            val convoID = activeConversationId ?: return
+            val message: String = message
+
+            FirebaseFirestore.getInstance()
+                .collection("conversations")
+                .document(convoID)
+                .collection("messages")
+                .document(message)
+                .delete()
+
+            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    val name = document.getString("name")
+
+                    sendMessage("${name} unsent a message")
+                }
+
+        }
+
+        override fun onCleared() {
+            messagesListenerRegistration?.remove()
+            conversationsListenerRegistration?.remove()
+            super.onCleared()
+        }
     }
-}

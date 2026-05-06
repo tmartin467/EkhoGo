@@ -209,6 +209,8 @@ fun CalendarScreen() {
                 if (accessToken != null) {
                     fetchGoogleEventsAndSaveToFirestore(accessToken)
 
+                    kotlinx.coroutines.delay(800)
+
                     eventsFireBase { resultMap ->
                         events = resultMap
                     }
@@ -332,7 +334,8 @@ fun CalendarScreen() {
                             TextStyle.FULL,
                             Locale.getDefault()
                         )
-                    } ${currentMonth.year}", fontSize = 22.sp
+                    } ${currentMonth.year}",
+                    fontSize = 22.sp
                 )
 
                 IconButton(
@@ -416,13 +419,42 @@ fun CalendarScreen() {
                                         if (eventsForDay.isNotEmpty()) {
                                             val eventBars = eventsForDay.take(3)
 
-                                            Row(
+                                            val singleDayEvents = eventBars.filter {
+                                                LocalDate.parse(it.startDate) == LocalDate.parse(it.endDate)
+                                            }
+
+                                            val multiDayEvents = eventBars.filter {
+                                                LocalDate.parse(it.startDate) != LocalDate.parse(it.endDate)
+                                            }
+
+                                            Column(
                                                 modifier = Modifier
                                                     .align(Alignment.BottomCenter)
                                                     .padding(bottom = 3.dp),
-                                                horizontalArrangement = Arrangement.Center
+                                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                eventBars.forEach { event ->
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    singleDayEvents.forEach { event ->
+                                                        val barColor = when (event.color) {
+                                                            "blue" -> Color.Blue
+                                                            "green" -> Color.Green
+                                                            "yellow" -> Color.Yellow
+                                                            else -> Color.Red
+                                                        }
+
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(5.dp)
+                                                                .background(barColor, CircleShape)
+                                                        )
+                                                    }
+                                                }
+
+                                                multiDayEvents.forEach { event ->
                                                     val start = LocalDate.parse(event.startDate)
                                                     val end = LocalDate.parse(event.endDate)
 
@@ -434,10 +466,6 @@ fun CalendarScreen() {
                                                     }
 
                                                     val shape = when {
-                                                        cellDate == start && cellDate == end -> RoundedCornerShape(
-                                                            50
-                                                        )
-
                                                         cellDate == start -> RoundedCornerShape(
                                                             topStart = 50.dp,
                                                             bottomStart = 50.dp
@@ -451,22 +479,12 @@ fun CalendarScreen() {
                                                         else -> RoundedCornerShape(0.dp)
                                                     }
 
-                                                    if (start == end) {
-                                                        // single-day → dot
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(5.dp)
-                                                                .background(barColor, CircleShape)
-                                                        )
-                                                    } else {
-                                                        // multi-day → bar
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .width(26.dp)
-                                                                .height(5.dp)
-                                                                .background(barColor, shape)
-                                                        )
-                                                    }
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .width(26.dp)
+                                                            .height(5.dp)
+                                                            .background(barColor, shape)
+                                                    )
                                                 }
                                             }
                                         }

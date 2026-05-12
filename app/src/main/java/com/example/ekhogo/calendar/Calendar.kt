@@ -94,7 +94,7 @@ fun getMonthGrid(yearMonth: YearMonth): List<LocalDate?> {
 fun MonthDayCell(
     date: LocalDate?,
     isSelected: Boolean,
-    hasEvents: Boolean,
+    eventColor: String?,
     onClick: () -> Unit
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -137,12 +137,12 @@ fun MonthDayCell(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        if (hasEvents) {
+        if (eventColor != null) {
             Box(
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(getEventColor(eventColor))
             )
         } else {
             Spacer(modifier = Modifier.height(6.dp))

@@ -10,6 +10,23 @@ import java.net.URL
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
+fun mapGoogleColorIdToAppColor(colorId: String): String {
+    return when (colorId) {
+        "1" -> "blue"
+        "2" -> "green"
+        "3" -> "purple"
+        "4" -> "red"
+        "5" -> "yellow"
+        "6" -> "orange"
+        "7" -> "cyan"
+        "8" -> "gray"
+        "9" -> "blue"
+        "10" -> "green"
+        "11" -> "red"
+        else -> "blue"
+    }
+}
+
 suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
     withContext(Dispatchers.IO) {
         val user = FirebaseAuth.getInstance().currentUser
@@ -60,6 +77,8 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
             }
 
             val googleId = item.optString("id", "")
+            val googleColorId = item.optString("colorId", "")
+            val color = mapGoogleColorIdToAppColor(googleColorId)
 
             eventsRef
                 .whereEqualTo("googleEventId", googleId)
@@ -72,7 +91,8 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
                             "date" to date,
                             "timeStart" to timeStart,
                             "timeEnd" to timeEnd,
-                            "color" to "blue",
+                            "color" to color,
+                            "googleColorId" to googleColorId,
                             "isAllDay" to isAllDay,
                             "source" to "google",
                             "googleEventId" to googleId,

@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -93,48 +95,61 @@ fun MonthDayCell(
     date: LocalDate?,
     isSelected: Boolean,
     hasEvents: Boolean,
-    eventColor: Color,
     onClick: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val isToday = date == LocalDate.now()
+
+    val dayBackgroundColor = when {
+        date == null -> Color.Transparent
+        isSelected -> MaterialTheme.colorScheme.primary
+        isToday -> if (isDarkTheme) Color(0xFF4A1F1F) else Color(0xFFFFD6D6)
+        else -> Color.Transparent
+    }
+
+    val dayTextColor = when {
+        date == null -> Color.Transparent
+        isSelected -> MaterialTheme.colorScheme.onPrimary
+        isToday -> if (isDarkTheme) Color.White else Color(0xFF4A1F1F)
+        else -> MaterialTheme.colorScheme.onBackground
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .padding(6.dp)
+            .padding(4.dp)
             .clickable(enabled = date != null) { onClick() }
     ) {
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .clip(CircleShape)
-                .background(
-                    when {
-                        date == null -> Color.Transparent
-                        isSelected -> MaterialTheme.colorScheme.primary
-                        else -> Color.LightGray
-                    }
-                ),
+                .clip(RoundedCornerShape(12.dp))
+                .background(dayBackgroundColor),
             contentAlignment = Alignment.Center
         ) {
             if (date != null) {
                 Text(
                     text = date.dayOfMonth.toString(),
-                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground
+                    color = dayTextColor
                 )
             }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(6.dp)
-                    .background(eventColor, CircleShape)
-            )
         }
 
-    }
+        Spacer(modifier = Modifier.height(4.dp))
 
-    Spacer(modifier = Modifier.height(4.dp))
+        if (hasEvents) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+        } else {
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+    }
 }
+
 
 @Composable
 fun CalendarScreen() {
@@ -372,6 +387,7 @@ fun CalendarScreen() {
                         }
                         val isSelected = cellDate == selectedDate
                         val isToday = cellDate == LocalDate.now()
+                        val isDarkTheme = isSystemInDarkTheme()
 
                         Box(
                             modifier = Modifier
@@ -396,7 +412,10 @@ fun CalendarScreen() {
                                         .background(
                                             when {
                                                 isSelected -> MaterialTheme.colorScheme.primary
-                                                isToday -> Color(0xFFFFE5E5)
+                                                isToday -> if (isDarkTheme) Color(0xFF4A1F1F) else Color(
+                                                    0xFFFFD6D6
+                                                )
+
                                                 else -> Color.Transparent
                                             }
                                         ),
@@ -404,7 +423,14 @@ fun CalendarScreen() {
                                 ) {
                                     Text(
                                         text = dayNumber.toString(),
-                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground,
+                                        color = when {
+                                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                                            isToday -> if (isDarkTheme) Color.White else Color(
+                                                0xFF4A1F1F
+                                            )
+
+                                            else -> MaterialTheme.colorScheme.onBackground
+                                        },
                                         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                                     )
 
@@ -571,9 +597,16 @@ fun CalendarScreen() {
                     modifier = Modifier
                         .fillMaxWidth(0.96f)
                         .fillMaxHeight(0.82f)
-                        .background(Color.White, shape = RoundedCornerShape(28.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(28.dp)
+                        )
                         .padding(20.dp)
                 ) {
+                    val dialogTextColor = MaterialTheme.colorScheme.onSurface
+                    val dialogMutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    val dialogAccentColor = MaterialTheme.colorScheme.primary
+
                     LaunchedEffect(selectedEvent) {
                         selectedEvent?.let {
                             eventText = it.title
@@ -633,7 +666,7 @@ fun CalendarScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("All day")
+                        Text("All day", color = dialogTextColor)
 
                         Switch(
                             checked = isAllDay,
@@ -648,9 +681,10 @@ fun CalendarScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Start date")
+                        Text("Start date", color = dialogTextColor)
                         Text(
                             text = eventStartDate.format(dialogDateFormatter),
+                            color = dialogAccentColor,
                             modifier = Modifier.clickable {
                                 showStartDatePicker = true
                             }
@@ -667,6 +701,7 @@ fun CalendarScreen() {
                         Text("End date")
                         Text(
                             text = eventEndDate.format(dialogDateFormatter),
+                            color = dialogAccentColor,
                             modifier = Modifier.clickable {
                                 showEndDatePicker = true
                             }
@@ -705,7 +740,7 @@ fun CalendarScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Start")
+                            Text("Start", color = dialogTextColor)
 
                             TextButton(onClick = { showStartPicker = true }) {
                                 Text(
@@ -723,7 +758,7 @@ fun CalendarScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("End")
+                            Text("End", color = dialogTextColor)
 
                             TextButton(onClick = { showEndPicker = true }) {
                                 Text(
@@ -847,7 +882,11 @@ fun CalendarScreen() {
                                 println("Save failed: uid=$uid, eventText='$eventText'")
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Text("Save")
                     }

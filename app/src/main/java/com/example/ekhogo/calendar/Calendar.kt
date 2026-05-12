@@ -193,6 +193,8 @@ fun CalendarScreen() {
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
+    var selectedColorName by remember { mutableStateOf("red") }
+
     val dialogDateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
     val googleSignInClient = remember {
@@ -545,6 +547,19 @@ fun CalendarScreen() {
                             .padding(start = 16.dp)
                             .clickable {
                                 selectedEvent = event
+
+                                eventText = event.title
+
+                                eventStartDate =
+                                    LocalDate.parse(event.startDate.ifBlank { event.date })
+                                eventEndDate = LocalDate.parse(event.endDate.ifBlank { event.date })
+
+                                selectedColorName = event.color.ifBlank { "red" }
+
+                                eventLocation = event.location
+                                eventNotes = event.notes
+                                isAllDay = event.isAllDay
+
                                 showAddEventDialog = true
                             }
                     ) {
@@ -714,18 +729,27 @@ fun CalendarScreen() {
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
                             listOf(
-                                Color.Red,
-                                Color.Blue,
-                                Color.Green,
-                                Color.Yellow
-                            ).forEach { color ->
+                                "red",
+                                "blue",
+                                "green",
+                                "yellow",
+                                "orange",
+                                "purple",
+                                "cyan",
+                                "gray"
+                            ).forEach { colorName ->
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .background(color, CircleShape)
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(getEventColor(colorName))
+                                        .border(
+                                            width = if (selectedColorName == colorName) 3.dp else 0.dp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            shape = CircleShape
+                                        )
                                         .clickable {
-                                            selectedColor = color
-                                            showColorPicker = false
+                                            selectedColorName = colorName
                                         }
                                 )
                             }
@@ -838,13 +862,7 @@ fun CalendarScreen() {
                                     "endDate" to eventEndDate.toString(),
                                     "timeStart" to selectedTimeStart,
                                     "timeEnd" to selectedTimeEnd,
-                                    "color" to when (selectedColor) {
-                                        Color.Red -> "red"
-                                        Color.Blue -> "blue"
-                                        Color.Green -> "green"
-                                        Color.Yellow -> "yellow"
-                                        else -> "red"
-                                    },
+                                    "color" to selectedColorName,
                                     "isAllDay" to isAllDay,
                                     "location" to eventLocation,
                                     "notes" to eventNotes,

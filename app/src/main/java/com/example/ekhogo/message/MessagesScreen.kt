@@ -95,6 +95,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
 
 
 
+    var userName by remember { mutableStateOf("") }
     var selectedUsers by remember { mutableStateOf(setOf<String>()) }
     var userSearch by remember { mutableStateOf("") }
     var friendUsers by remember { mutableStateOf<List<FriendUser>>(emptyList()) }
@@ -106,8 +107,14 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
             loadingNames(ids) { users ->
 
                 friendUsers = users
-                val name = users
+                //val name = users
             }
+        }
+    }
+
+    LaunchedEffect(Unit){
+        loadingOwnName(uid){name ->
+            userName = name
         }
     }
 
@@ -447,8 +454,14 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
 
+
                                 val friendsList = selectedUsers.joinToString(", ") { id ->
                                     friendUsers.find { it.id == id }?.name ?: ""}
+
+                                val fullList = userName + ", " + selectedUsers.joinToString(", ") { id ->
+                                    friendUsers.find { it.id == id }?.name ?: ""
+                                }
+
 
                                 Text(friendsList)
 
@@ -459,7 +472,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                                     onClick = {
                                         val actualName =
                                             if (chatName.isBlank()) {
-                                                friendsList
+                                                fullList
                                             } else {
                                                 chatName
                                             }

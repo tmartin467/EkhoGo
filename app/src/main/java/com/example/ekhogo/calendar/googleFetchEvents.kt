@@ -12,18 +12,18 @@ import java.time.format.DateTimeFormatter
 
 fun mapGoogleColorIdToAppColor(colorId: String): String {
     return when (colorId) {
-        "1" -> "blue"
-        "2" -> "green"
-        "3" -> "purple"
-        "4" -> "red"
-        "5" -> "yellow"
-        "6" -> "orange"
-        "7" -> "cyan"
-        "8" -> "gray"
-        "9" -> "blue"
-        "10" -> "green"
-        "11" -> "red"
-        else -> "blue"
+        "1" -> "lavender"
+        "2" -> "sage"
+        "3" -> "grape"
+        "4" -> "flamingo"
+        "5" -> "banana"
+        "6" -> "tangerine"
+        "7" -> "peacock"
+        "8" -> "graphite"
+        "9" -> "blueberry"
+        "10" -> "basil"
+        "11" -> "tomato"
+        else -> "peacock"
     }
 }
 

@@ -4,14 +4,17 @@ import androidx.compose.ui.graphics.Color
 
 fun getEventColor(colorName: String?): Color {
     return when (colorName?.lowercase()) {
-        "red" -> Color(0xFFE53935)
-        "blue" -> Color(0xFF1E88E5)
-        "green" -> Color(0xFF43A047)
-        "yellow" -> Color(0xFFFDD835)
-        "orange" -> Color(0xFFFB8C00)
-        "purple" -> Color(0xFF8E24AA)
-        "cyan" -> Color(0xFF00ACC1)
-        "gray" -> Color(0xFF757575)
+        "tomato" -> Color(0xFFD50000)
+        "flamingo" -> Color(0xFFE67C73)
+        "tangerine" -> Color(0xFFF4511E)
+        "banana" -> Color(0xFFF6BF26)
+        "sage" -> Color(0xFF33B679)
+        "basil" -> Color(0xFF0B8043)
+        "peacock" -> Color(0xFF039BE5)
+        "blueberry" -> Color(0xFF3F51B5)
+        "lavender" -> Color(0xFF7986CB)
+        "grape" -> Color(0xFF8E24AA)
+        "graphite" -> Color(0xFF616161)
         else -> Color(0xFF1E88E5)
     }
 }

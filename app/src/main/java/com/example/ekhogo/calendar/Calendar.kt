@@ -9,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -24,10 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,8 +65,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 
 fun getMonthGrid(yearMonth: YearMonth): List<LocalDate?> {
@@ -166,7 +166,6 @@ fun CalendarScreen() {
     var eventText by remember { mutableStateOf("") }
     var showAddEventDialog by remember { mutableStateOf(false) }
 
-    var selectedColor by remember { mutableStateOf(Color.Red) }
     var showColorPicker by remember { mutableStateOf(false) }
 
     var startHour by remember { mutableStateOf(9) }
@@ -193,7 +192,9 @@ fun CalendarScreen() {
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
-    var selectedColorName by remember { mutableStateOf("red") }
+    var selectedColorName by remember { mutableStateOf("tomato") }
+
+    var viewMode by remember { mutableStateOf(CalendarViewMode.Month) }
 
     val dialogDateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
@@ -285,11 +286,36 @@ fun CalendarScreen() {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top,
         ) {
-
+            var menuOpen by remember { mutableStateOf(false) }
+            
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // ☰ Hamburger
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Calendar view menu")
+                    }
+
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false }
+                    ) {
+                        CalendarViewMode.values().forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode.name) },
+                                onClick = {
+                                    viewMode = mode
+                                    menuOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
                 Button(
                     onClick = {
                         if (!checkLink) {
@@ -323,48 +349,18 @@ fun CalendarScreen() {
                             }
                         }
                     },
-                    modifier = Modifier.padding(start = 16.dp)
                 ) {
                     Text(if (!checkLink) "Link to Google" else "Unlink Google")
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { currentMonth = currentMonth.minusMonths(1) }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronLeft,
-                        contentDescription = "Previous month"
-                    )
-                }
-
-                Text(
-                    text = "${
-                        currentMonth.month.getDisplayName(
-                            TextStyle.FULL,
-                            Locale.getDefault()
-                        )
-                    } ${currentMonth.year}",
-                    fontSize = 22.sp
-                )
-
-                IconButton(
-                    onClick = { currentMonth = currentMonth.plusMonths(1) }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "Next month"
-                    )
-                }
-
-            }
+            CalendarTopBar(
+                currentMonth = currentMonth,
+                viewMode = viewMode,
+                onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+                onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+                onViewModeChange = { viewMode = it }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -467,12 +463,7 @@ fun CalendarScreen() {
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     singleDayEvents.forEach { event ->
-                                                        val barColor = when (event.color) {
-                                                            "blue" -> Color.Blue
-                                                            "green" -> Color.Green
-                                                            "yellow" -> Color.Yellow
-                                                            else -> Color.Red
-                                                        }
+                                                        val barColor = getEventColor(event.color)
 
                                                         Box(
                                                             modifier = Modifier
@@ -486,12 +477,7 @@ fun CalendarScreen() {
                                                     val start = LocalDate.parse(event.startDate)
                                                     val end = LocalDate.parse(event.endDate)
 
-                                                    val barColor = when (event.color) {
-                                                        "blue" -> Color.Blue
-                                                        "green" -> Color.Green
-                                                        "yellow" -> Color.Yellow
-                                                        else -> Color.Red
-                                                    }
+                                                    val barColor = getEventColor(event.color)
 
                                                     val shape = when {
                                                         cellDate == start -> RoundedCornerShape(
@@ -554,7 +540,7 @@ fun CalendarScreen() {
                                     LocalDate.parse(event.startDate.ifBlank { event.date })
                                 eventEndDate = LocalDate.parse(event.endDate.ifBlank { event.date })
 
-                                selectedColorName = event.color.ifBlank { "red" }
+                                selectedColorName = event.color.ifBlank { "tomato" }
 
                                 eventLocation = event.location
                                 eventNotes = event.notes
@@ -563,12 +549,8 @@ fun CalendarScreen() {
                                 showAddEventDialog = true
                             }
                     ) {
-                        val dotColor = when (event.color) {
-                            "blue" -> Color.Blue
-                            "green" -> Color.Green
-                            "yellow" -> Color.Yellow
-                            else -> Color.Red
-                        }
+                        val dotColor = getEventColor(event.color)
+
                         Box(
                             modifier = Modifier
                                 .size(10.dp)
@@ -602,6 +584,10 @@ fun CalendarScreen() {
 
     if (showAddEventDialog) {
         Dialog(onDismissRequest = { showAddEventDialog = false }) {
+
+            val dialogTextColor = MaterialTheme.colorScheme.onSurface
+            val dialogMutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val dialogAccentColor = MaterialTheme.colorScheme.primary
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -618,21 +604,12 @@ fun CalendarScreen() {
                         )
                         .padding(20.dp)
                 ) {
-                    val dialogTextColor = MaterialTheme.colorScheme.onSurface
-                    val dialogMutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    val dialogAccentColor = MaterialTheme.colorScheme.primary
 
                     LaunchedEffect(selectedEvent) {
                         selectedEvent?.let {
                             eventText = it.title
 
-                            selectedColor = when (it.color) {
-                                "blue" -> Color.Blue
-                                "green" -> Color.Green
-                                "yellow" -> Color.Yellow
-                                else -> Color.Red
-                            }
-
+                            selectedColorName = it.color.ifBlank { "tomato" }
                             isAllDay = it.isAllDay
                         }
                     }
@@ -642,7 +619,7 @@ fun CalendarScreen() {
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
-                                .background(selectedColor, shape = CircleShape)
+                                .background(getEventColor(selectedColorName), shape = CircleShape)
                                 .clickable { showColorPicker = true }
                         )
 
@@ -724,19 +701,23 @@ fun CalendarScreen() {
                     }
 
                     if (showColorPicker) {
-                        Row(
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
                             listOf(
-                                "red",
-                                "blue",
-                                "green",
-                                "yellow",
-                                "orange",
-                                "purple",
-                                "cyan",
-                                "gray"
+                                "tomato",
+                                "flamingo",
+                                "tangerine",
+                                "banana",
+                                "sage",
+                                "basil",
+                                "peacock",
+                                "blueberry",
+                                "lavender",
+                                "grape",
+                                "graphite"
                             ).forEach { colorName ->
                                 Box(
                                     modifier = Modifier
@@ -976,8 +957,9 @@ fun CalendarScreen() {
             }
         }
     }
-
 }
+
+
 
 
 

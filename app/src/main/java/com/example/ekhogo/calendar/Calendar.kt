@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -283,11 +285,30 @@ fun CalendarScreen() {
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .pointerInput(viewMode) {
+                    var totalDrag = 0f
+
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            totalDrag = 0f
+                        },
+                        onVerticalDrag = { _, dragAmount ->
+                            totalDrag += dragAmount
+                        },
+                        onDragEnd = {
+                            if (totalDrag < -80 && viewMode == CalendarViewMode.Month) {
+                                viewMode = CalendarViewMode.Week
+                            } else if (totalDrag > 80 && viewMode == CalendarViewMode.Week) {
+                                viewMode = CalendarViewMode.Month
+                            }
+                        }
+                    )
+                },
             verticalArrangement = Arrangement.Top,
         ) {
             var menuOpen by remember { mutableStateOf(false) }
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -357,148 +378,198 @@ fun CalendarScreen() {
             CalendarTopBar(
                 currentMonth = currentMonth,
                 viewMode = viewMode,
-                onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
-                onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+                onPreviousMonth = {
+                    currentMonth = currentMonth.minusMonths(1)
+
+                    selectedDate =
+                        if (currentMonth.year == LocalDate.now().year &&
+                            currentMonth.month == LocalDate.now().month
+                        ) {
+                            LocalDate.now()
+                        } else {
+                            currentMonth.atDay(1)
+                        }
+                },
+
+                onNextMonth = {
+                    currentMonth = currentMonth.plusMonths(1)
+
+                    selectedDate =
+                        if (currentMonth.year == LocalDate.now().year &&
+                            currentMonth.month == LocalDate.now().month
+                        ) {
+                            LocalDate.now()
+                        } else {
+                            currentMonth.atDay(1)
+                        }
+                },
                 onViewModeChange = { viewMode = it }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            val firstDayOfMonth = currentMonth.atDay(1)
-            val daysInMonth = currentMonth.lengthOfMonth()
-            val startOffset = firstDayOfMonth.dayOfWeek.value % 7
-            val totalCells = startOffset + daysInMonth
-            val rows = (totalCells + 6) / 7
+            when (viewMode) {
+                CalendarViewMode.Month -> {
 
-            for (row in 0 until rows) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    for (col in 0..6) {
-                        val cellIndex = row * 7 + col
-                        val dayNumber = cellIndex - startOffset + 1
-                        val cellDate = if (dayNumber in 1..daysInMonth) {
-                            currentMonth.atDay(dayNumber)
-                        } else {
-                            null
-                        }
-                        val isSelected = cellDate == selectedDate
-                        val isToday = cellDate == LocalDate.now()
-                        val isDarkTheme = isSystemInDarkTheme()
+                    val firstDayOfMonth = currentMonth.atDay(1)
+                    val daysInMonth = currentMonth.lengthOfMonth()
+                    val startOffset = firstDayOfMonth.dayOfWeek.value % 7
+                    val totalCells = startOffset + daysInMonth
+                    val rows = (totalCells + 6) / 7
 
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp)
-                                .padding(2.dp)
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable(enabled = cellDate != null) {
-                                    selectedDate = cellDate!!
-                                },
-                            contentAlignment = Alignment.Center
+                    for (row in 0 until rows) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            if (cellDate != null) {
+                            for (col in 0..6) {
+                                val cellIndex = row * 7 + col
+                                val dayNumber = cellIndex - startOffset + 1
+                                val cellDate = if (dayNumber in 1..daysInMonth) {
+                                    currentMonth.atDay(dayNumber)
+                                } else {
+                                    null
+                                }
+                                val isSelected = cellDate == selectedDate
+                                val isToday = cellDate == LocalDate.now()
+                                val isDarkTheme = isSystemInDarkTheme()
+
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            when {
-                                                isSelected -> MaterialTheme.colorScheme.primary
-                                                isToday -> if (isDarkTheme) Color(0xFF4A1F1F) else Color(
-                                                    0xFFFFD6D6
-                                                )
-
-                                                else -> Color.Transparent
-                                            }
-                                        ),
-                                    contentAlignment = Alignment.TopStart
+                                        .weight(1f)
+                                        .height(56.dp)
+                                        .padding(2.dp)
+                                        .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outline,
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable(enabled = cellDate != null) {
+                                            selectedDate = cellDate!!
+                                        },
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = dayNumber.toString(),
-                                        color = when {
-                                            isSelected -> MaterialTheme.colorScheme.onPrimary
-                                            isToday -> if (isDarkTheme) Color.White else Color(
-                                                0xFF4A1F1F
+                                    if (cellDate != null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(
+                                                    when {
+                                                        isSelected -> MaterialTheme.colorScheme.primary
+                                                        isToday -> if (isDarkTheme) Color(
+                                                            0xFF4A1F1F
+                                                        ) else Color(
+                                                            0xFFFFD6D6
+                                                        )
+
+                                                        else -> Color.Transparent
+                                                    }
+                                                ),
+                                            contentAlignment = Alignment.TopStart
+                                        ) {
+                                            Text(
+                                                text = dayNumber.toString(),
+                                                color = when {
+                                                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                                                    isToday -> if (isDarkTheme) Color.White else Color(
+                                                        0xFF4A1F1F
+                                                    )
+
+                                                    else -> MaterialTheme.colorScheme.onBackground
+                                                },
+                                                modifier = Modifier.padding(
+                                                    start = 4.dp,
+                                                    top = 2.dp
+                                                )
                                             )
 
-                                            else -> MaterialTheme.colorScheme.onBackground
-                                        },
-                                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-                                    )
+                                            if (cellDate != null) {
 
-                                    if (cellDate != null) {
-
-                                        val eventsForDay = events.values.flatten().filter { event ->
-                                            val start = LocalDate.parse(event.startDate)
-                                            val end = LocalDate.parse(event.endDate)
-                                            cellDate >= start && cellDate <= end
-                                        }
-
-                                        if (eventsForDay.isNotEmpty()) {
-                                            val eventBars = eventsForDay.take(3)
-
-                                            val singleDayEvents = eventBars.filter {
-                                                LocalDate.parse(it.startDate) == LocalDate.parse(it.endDate)
-                                            }
-
-                                            val multiDayEvents = eventBars.filter {
-                                                LocalDate.parse(it.startDate) != LocalDate.parse(it.endDate)
-                                            }
-
-                                            Column(
-                                                modifier = Modifier
-                                                    .align(Alignment.BottomCenter)
-                                                    .padding(bottom = 3.dp),
-                                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    singleDayEvents.forEach { event ->
-                                                        val barColor = getEventColor(event.color)
-
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(5.dp)
-                                                                .background(barColor, CircleShape)
-                                                        )
-                                                    }
-                                                }
-
-                                                multiDayEvents.forEach { event ->
-                                                    val start = LocalDate.parse(event.startDate)
-                                                    val end = LocalDate.parse(event.endDate)
-
-                                                    val barColor = getEventColor(event.color)
-
-                                                    val shape = when {
-                                                        cellDate == start -> RoundedCornerShape(
-                                                            topStart = 50.dp,
-                                                            bottomStart = 50.dp
-                                                        )
-
-                                                        cellDate == end -> RoundedCornerShape(
-                                                            topEnd = 50.dp,
-                                                            bottomEnd = 50.dp
-                                                        )
-
-                                                        else -> RoundedCornerShape(0.dp)
+                                                val eventsForDay =
+                                                    events.values.flatten().filter { event ->
+                                                        val start =
+                                                            LocalDate.parse(event.startDate)
+                                                        val end = LocalDate.parse(event.endDate)
+                                                        cellDate >= start && cellDate <= end
                                                     }
 
-                                                    Box(
+                                                if (eventsForDay.isNotEmpty()) {
+                                                    val eventBars = eventsForDay.take(3)
+
+                                                    val singleDayEvents = eventBars.filter {
+                                                        LocalDate.parse(it.startDate) == LocalDate.parse(
+                                                            it.endDate
+                                                        )
+                                                    }
+
+                                                    val multiDayEvents = eventBars.filter {
+                                                        LocalDate.parse(it.startDate) != LocalDate.parse(
+                                                            it.endDate
+                                                        )
+                                                    }
+
+                                                    Column(
                                                         modifier = Modifier
-                                                            .width(26.dp)
-                                                            .height(5.dp)
-                                                            .background(barColor, shape)
-                                                    )
+                                                            .align(Alignment.BottomCenter)
+                                                            .padding(bottom = 3.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(
+                                                            2.dp
+                                                        ),
+                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                    ) {
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(
+                                                                2.dp
+                                                            ),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            singleDayEvents.forEach { event ->
+                                                                val barColor =
+                                                                    getEventColor(event.color)
+
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(5.dp)
+                                                                        .background(
+                                                                            barColor,
+                                                                            CircleShape
+                                                                        )
+                                                                )
+                                                            }
+                                                        }
+
+                                                        multiDayEvents.forEach { event ->
+                                                            val start =
+                                                                LocalDate.parse(event.startDate)
+                                                            val end =
+                                                                LocalDate.parse(event.endDate)
+
+                                                            val barColor =
+                                                                getEventColor(event.color)
+
+                                                            val shape = when {
+                                                                cellDate == start -> RoundedCornerShape(
+                                                                    topStart = 50.dp,
+                                                                    bottomStart = 50.dp
+                                                                )
+
+                                                                cellDate == end -> RoundedCornerShape(
+                                                                    topEnd = 50.dp,
+                                                                    bottomEnd = 50.dp
+                                                                )
+
+                                                                else -> RoundedCornerShape(0.dp)
+                                                            }
+
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .width(26.dp)
+                                                                    .height(5.dp)
+                                                                    .background(barColor, shape)
+                                                            )
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
@@ -508,7 +579,24 @@ fun CalendarScreen() {
                         }
                     }
                 }
+
+                CalendarViewMode.Week -> {
+                    WeekCalendarView(
+                        selectedDate = selectedDate,
+                        events = events,
+                        onDateSelected = { selectedDate = it }
+                    )
+                }
+
+                CalendarViewMode.Day -> {
+                    Text(
+                        text = "Day view coming soon",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
+
+
             Spacer(modifier = Modifier.height(24.dp))
 
             val formatter = DateTimeFormatter.ofPattern("EEE, MMMM d")

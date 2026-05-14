@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
@@ -31,6 +32,7 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
     withContext(Dispatchers.IO) {
         val user = FirebaseAuth.getInstance().currentUser
         val uid = user?.uid ?: return@withContext
+        println("Google import saving under uid: $uid")
         val db = FirebaseFirestore.getInstance()
 
         val url = URL(
@@ -86,9 +88,37 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
                 .addOnSuccessListener { existing ->
 
                     if (existing.isEmpty) {
+
+                        val startDate =
+                            item.getJSONObject("start")
+                                .optString("date")
+                                .ifBlank {
+                                    item.getJSONObject("start")
+                                        .optString("dateTime")
+                                        .substringBefore("T")
+                                }
+
+                        val rawEndDate =
+                            item.getJSONObject("end")
+                                .optString("date")
+                                .ifBlank {
+                                    item.getJSONObject("end")
+                                        .optString("dateTime")
+                                        .substringBefore("T")
+                                }
+                                .ifBlank { startDate }
+
+                        val endDate = if (isAllDay) {
+                            LocalDate.parse(rawEndDate).minusDays(1).toString()
+                        } else {
+                            rawEndDate
+                        }
+
                         val eventData = hashMapOf(
                             "title" to title,
-                            "date" to date,
+                            "date" to startDate,
+                            "startDate" to startDate,
+                            "endDate" to endDate,
                             "timeStart" to timeStart,
                             "timeEnd" to timeEnd,
                             "color" to color,
@@ -99,6 +129,8 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
                             "createdAt" to System.currentTimeMillis()
                         )
 
+                        println("Attempting to save Google event: $title")
+                        println(eventData)
                         eventsRef.add(eventData)
                     }
                 }

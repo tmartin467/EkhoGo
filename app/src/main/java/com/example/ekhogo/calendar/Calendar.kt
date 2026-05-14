@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -160,6 +161,8 @@ fun CalendarScreen() {
     val scope = rememberCoroutineScope()
 
     var checkLink by remember { mutableStateOf(false) }
+    var isGoogleLinking by remember { mutableStateOf(false) }
+
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
@@ -198,6 +201,8 @@ fun CalendarScreen() {
 
     var viewMode by remember { mutableStateOf(CalendarViewMode.Month) }
 
+    var eventErrorMessage by remember { mutableStateOf<String?>(null) }
+
     val dialogDateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
     val googleSignInClient = remember {
@@ -220,26 +225,32 @@ fun CalendarScreen() {
 
         try {
             val account = task.getResult(ApiException::class.java)
-            val email = account.email
-            checkLink = true
 
             scope.launch {
                 val accessToken = getAccessToken(context, account)
 
                 if (accessToken != null) {
+                    checkLink = true
                     fetchGoogleEventsAndSaveToFirestore(accessToken)
 
                     kotlinx.coroutines.delay(800)
 
                     eventsFireBase { resultMap ->
                         events = resultMap
+                        isGoogleLinking = false
                     }
                 } else {
                     println("Google access token was null")
+                    checkLink = false
+                    isGoogleLinking = false
                 }
             }
 
         } catch (e: Exception) {
+            println("Google sign-in failed: ${e.message}")
+            e.printStackTrace()
+            checkLink = false
+            isGoogleLinking = false
         }
     }
 
@@ -338,8 +349,10 @@ fun CalendarScreen() {
                     }
                 }
                 Button(
+                    enabled = !isGoogleLinking,
                     onClick = {
                         if (!checkLink) {
+                            isGoogleLinking = true
                             val signInIntent = googleSignInClient.signInIntent
                             signInLauncher.launch(signInIntent)
                         } else {
@@ -410,6 +423,22 @@ fun CalendarScreen() {
 
             when (viewMode) {
                 CalendarViewMode.Month -> {
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT").forEach { day ->
+                            Text(
+                                text = day,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     val firstDayOfMonth = currentMonth.atDay(1)
                     val daysInMonth = currentMonth.lengthOfMonth()
@@ -715,7 +744,10 @@ fun CalendarScreen() {
 
                         OutlinedTextField(
                             value = eventText,
-                            onValueChange = { eventText = it },
+                            onValueChange = {
+                                eventText = it
+                                eventErrorMessage = null
+                            },
                             placeholder = { Text("Add title") },
                             modifier = Modifier.weight(1f)
                         )
@@ -901,40 +933,73 @@ fun CalendarScreen() {
                         )
                     }
 
+                    eventErrorMessage?.let {
+                        Text(
+                            text = it,
+                            color = Color.Red,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
                     Button(
                         onClick = {
-                            val user = FirebaseAuth.getInstance().currentUser
-                            val uid = user?.uid
-                            val db = FirebaseFirestore.getInstance()
+                            eventErrorMessage = null
 
-                            val selectedTimeStart = if (isAllDay) {
-                                ""
-                            } else {
+                            if (eventText.isBlank()) {
+                                eventErrorMessage = "Please enter an event title."
+                                return@Button
+                            }
+
+                            if (eventEndDate.isBefore(eventStartDate)) {
+                                eventErrorMessage =
+                                    "Incorrect placement. Please place logical dates."
+                                return@Button
+                            }
+
+                            val titleToSave = eventText
+                            val locationToSave = eventLocation
+                            val notesToSave = eventNotes
+                            val startDateToSave = eventStartDate
+                            val endDateToSave = eventEndDate
+                            val colorToSave = selectedColorName
+                            val allDayToSave = isAllDay
+                            val editingEvent = selectedEvent
+
+                            val selectedTimeStart = if (allDayToSave) "" else {
                                 "${startHour}:${
                                     startMinute.toString().padStart(2, '0')
                                 } ${if (isStartAM) "AM" else "PM"}"
                             }
 
-                            val selectedTimeEnd = if (isAllDay) {
-                                ""
-                            } else {
+                            val selectedTimeEnd = if (allDayToSave) "" else {
                                 "${endHour}:${
                                     endMinute.toString().padStart(2, '0')
                                 } ${if (isEndAM) "AM" else "PM"}"
                             }
 
-                            if (uid != null && eventText.isNotBlank()) {
+                            showAddEventDialog = false
+                            eventText = ""
+                            eventLocation = ""
+                            eventNotes = ""
+                            selectedEvent = null
+
+                            val user = FirebaseAuth.getInstance().currentUser
+                            val uid = user?.uid
+                            val db = FirebaseFirestore.getInstance()
+
+                            if (uid != null) {
                                 val eventData = hashMapOf(
-                                    "title" to eventText,
-                                    "date" to eventStartDate.toString(),
-                                    "startDate" to eventStartDate.toString(),
-                                    "endDate" to eventEndDate.toString(),
+                                    "title" to titleToSave,
+                                    "date" to startDateToSave.toString(),
+                                    "startDate" to startDateToSave.toString(),
+                                    "endDate" to endDateToSave.toString(),
                                     "timeStart" to selectedTimeStart,
                                     "timeEnd" to selectedTimeEnd,
-                                    "color" to selectedColorName,
-                                    "isAllDay" to isAllDay,
-                                    "location" to eventLocation,
-                                    "notes" to eventNotes,
+                                    "color" to colorToSave,
+                                    "isAllDay" to allDayToSave,
+                                    "location" to locationToSave,
+                                    "notes" to notesToSave,
                                     "createdAt" to System.currentTimeMillis()
                                 )
 
@@ -942,14 +1007,36 @@ fun CalendarScreen() {
                                     .document(uid)
                                     .collection("events")
 
-                                if (selectedEvent != null) {
-                                    eventsRef.document(selectedEvent!!.id)
+                                val updatedEvent = Event(
+                                    id = editingEvent?.id ?: "",
+                                    title = titleToSave,
+                                    date = startDateToSave.toString(),
+                                    startDate = startDateToSave.toString(),
+                                    endDate = endDateToSave.toString(),
+                                    timeStart = selectedTimeStart,
+                                    timeEnd = selectedTimeEnd,
+                                    color = colorToSave,
+                                    isAllDay = allDayToSave,
+                                    location = locationToSave,
+                                    notes = notesToSave,
+                                    source = editingEvent?.source ?: "manual"
+                                )
+
+                                events = if (editingEvent != null) {
+                                    events.mapValues { entry ->
+                                        entry.value.map { event ->
+                                            if (event.id == editingEvent.id) updatedEvent else event
+                                        }
+                                    }
+                                } else {
+                                    events + (startDateToSave to ((events[startDateToSave]
+                                        ?: emptyList()) + updatedEvent))
+                                }
+
+                                if (editingEvent != null) {
+                                    eventsRef.document(editingEvent.id)
                                         .set(eventData)
                                         .addOnSuccessListener {
-                                            selectedEvent = null
-                                            eventText = ""
-                                            showAddEventDialog = false
-
                                             eventsFireBase { resultMap ->
                                                 events = resultMap
                                             }
@@ -957,9 +1044,6 @@ fun CalendarScreen() {
                                 } else {
                                     eventsRef.add(eventData)
                                         .addOnSuccessListener {
-                                            eventText = ""
-                                            showAddEventDialog = false
-
                                             eventsFireBase { resultMap ->
                                                 events = resultMap
                                             }
@@ -981,21 +1065,32 @@ fun CalendarScreen() {
                     if (selectedEvent != null) {
                         TextButton(
                             onClick = {
+                                val eventToDelete = selectedEvent
+
+                                if (eventToDelete != null) {
+                                    events = events.mapValues { entry ->
+                                        entry.value.filter { it.id != eventToDelete.id }
+                                    }.filterValues { it.isNotEmpty() }
+                                }
+
+                                selectedEvent = null
+                                eventText = ""
+                                eventLocation = ""
+                                eventNotes = ""
+                                eventErrorMessage = null
+                                showAddEventDialog = false
+
                                 val user = FirebaseAuth.getInstance().currentUser
                                 val uid = user?.uid
                                 val db = FirebaseFirestore.getInstance()
 
-                                if (uid != null) {
+                                if (uid != null && eventToDelete != null) {
                                     db.collection("users")
                                         .document(uid)
                                         .collection("events")
-                                        .document(selectedEvent!!.id)
+                                        .document(eventToDelete.id)
                                         .delete()
                                         .addOnSuccessListener {
-                                            selectedEvent = null
-                                            eventText = ""
-                                            showAddEventDialog = false
-
                                             eventsFireBase { resultMap ->
                                                 events = resultMap
                                             }

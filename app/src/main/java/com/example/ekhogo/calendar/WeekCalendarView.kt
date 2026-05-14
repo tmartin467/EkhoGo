@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 
 @Composable
@@ -48,13 +50,19 @@ fun WeekCalendarView(
                 modifier = Modifier
                     .weight(1f)
                     .clickable { onDateSelected(date) }
-                    .padding(6.dp),
+                    .padding(2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(date.dayOfWeek.name.take(3))
+                Text(
+                    text = date.dayOfWeek.name.take(3),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
 
                 Box(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .height(56.dp)
                         .padding(2.dp)
                         .border(
@@ -72,25 +80,62 @@ fun WeekCalendarView(
                                 if (isSelected) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surface
                             ),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.TopStart
                     ) {
                         Text(
                             text = date.dayOfMonth.toString(),
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                         )
                     }
-                }
 
-                Spacer(Modifier.height(4.dp))
+                    if (eventsForDay.isNotEmpty()) {
+                        val eventBars = eventsForDay.take(3)
 
-                if (eventsForDay.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(getEventColor(eventsForDay.first().color))
-                    )
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            eventBars.forEach { event ->
+                                val start = LocalDate.parse(event.startDate.ifBlank { event.date })
+                                val end = LocalDate.parse(event.endDate.ifBlank { event.date })
+                                val barColor = getEventColor(event.color)
+
+                                if (start == end) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(5.dp)
+                                            .background(barColor, CircleShape)
+                                    )
+                                } else {
+                                    val shape = when {
+                                        date == start -> RoundedCornerShape(
+                                            topStart = 50.dp,
+                                            bottomStart = 50.dp
+                                        )
+
+                                        date == end -> RoundedCornerShape(
+                                            topEnd = 50.dp,
+                                            bottomEnd = 50.dp
+                                        )
+
+                                        else -> RoundedCornerShape(0.dp)
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .width(26.dp)
+                                            .height(5.dp)
+                                            .background(barColor, shape)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ data class Event(
     val isAllDay: Boolean = false,
     val location: String = "",
     val notes: String = "",
+    val source: String = "manual",
     val startDate: String = "",
     val endDate: String = ""
 )

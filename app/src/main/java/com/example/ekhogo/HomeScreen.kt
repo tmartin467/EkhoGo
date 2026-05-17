@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +60,7 @@ import com.example.ekhogo.friends.FriendsScreen
 import com.example.ekhogo.map.CampusMapScreen
 import com.example.ekhogo.message.MessagesScreen
 import com.example.ekhogo.message.MessagesViewModel
+import com.example.ekhogo.notifications.MessageNotifications
 import com.example.ekhogo.schedule.Schedule
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -78,6 +80,7 @@ fun HomeScreen(
     val ToDoList = remember { mutableStateListOf<ToDoClass>() }
     val currentUser = FirebaseAuth.getInstance().currentUser
     val db = FirebaseFirestore.getInstance()
+    val context = LocalContext.current
 
     var profileImageUrl by remember { mutableStateOf("") }
     val unreadCount by messagesViewModel.unreadCount.collectAsState()
@@ -93,6 +96,9 @@ fun HomeScreen(
     LaunchedEffect(currentUser?.uid) {
         val uid = currentUser?.uid
         if (uid != null) {
+            MessageNotifications.prepare(context)
+            MessageNotifications.saveCurrentToken()
+
             db.collection("users")
                 .document(uid)
                 .get()

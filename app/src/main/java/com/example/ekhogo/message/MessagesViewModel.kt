@@ -249,6 +249,7 @@ class MessagesViewModel : ViewModel() {
             .addOnSuccessListener {
                 _messageError.value = null
                 Log.d("FIREBASE", "Message sent successfully!")
+                queueMessageNotification(conversationId, text)
                 onComplete(true)
             }
             .addOnFailureListener { e ->
@@ -257,6 +258,58 @@ class MessagesViewModel : ViewModel() {
                 onComplete(false)
             }
         //}
+    }
+
+    private fun queueMessageNotification(conversationId: String, text: String) {
+        val senderId = currentUserId
+        if (senderId.isBlank()) return
+
+        val conversationRef = db.collection("conversations").document(conversationId)
+
+        conversationRef.get()
+            .addOnSuccessListener { conversation ->
+                val participants = (conversation.get("participants") as? List<*>)
+                    ?.filterIsInstance<String>()
+                    ?: emptyList()
+
+                val recipientIds = participants.filter { it != senderId }
+                if (recipientIds.isEmpty()) return@addOnSuccessListener
+
+                db.collection("users")
+                    .document(senderId)
+                    .get()
+                    .addOnSuccessListener { sender ->
+                        val senderName = sender.getString("name")
+                            ?.takeIf { it.isNotBlank() }
+                            ?: sender.getString("email")
+                            ?: auth.currentUser?.email
+                            ?: "Someone"
+
+                        val notificationRequest = hashMapOf(
+                            "type" to "message",
+                            "conversationId" to conversationId,
+                            "recipientIds" to recipientIds,
+                            "senderId" to senderId,
+                            "senderName" to senderName,
+                            "conversationName" to (conversation.getString("groupName") ?: "Group Chat"),
+                            "isGroup" to (conversation.getBoolean("isGroup") ?: false),
+                            "messageText" to text.take(200),
+                            "createdAt" to FieldValue.serverTimestamp()
+                        )
+
+                        db.collection("notificationRequests")
+                            .add(notificationRequest)
+                            .addOnFailureListener { error ->
+                                Log.w("FIREBASE", "Could not queue message notification", error)
+                            }
+                    }
+                    .addOnFailureListener { error ->
+                        Log.w("FIREBASE", "Could not load sender for message notification", error)
+                    }
+            }
+            .addOnFailureListener { error ->
+                Log.w("FIREBASE", "Could not load conversation for message notification", error)
+            }
     }
 
     fun loadConversationsPreview() {

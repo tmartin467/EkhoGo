@@ -13,5 +13,6 @@ data class Friend(
     val major: String,
     val bio: String = "",
     val profileImageUrl: String = "",
+    val classesList: List<String> = emptyList(),
     val status: FriendStatus = FriendStatus.NONE
 )

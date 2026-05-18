@@ -292,7 +292,9 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                                             )
                                             Spacer(modifier = Modifier.height(24.dp))
 
-                                            participants.forEach { participant ->
+                                            participants
+                                                .sorted()
+                                                .forEach { participant ->
 
                                                 Text(
                                                     text = participant,

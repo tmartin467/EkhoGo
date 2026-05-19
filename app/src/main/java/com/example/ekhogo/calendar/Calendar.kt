@@ -1019,7 +1019,8 @@ fun CalendarScreen() {
                                     isAllDay = allDayToSave,
                                     location = locationToSave,
                                     notes = notesToSave,
-                                    source = editingEvent?.source ?: "manual"
+                                    source = editingEvent?.source ?: "manual",
+                                    googleEventId = ""
                                 )
 
                                 events = if (editingEvent != null) {

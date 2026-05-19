@@ -1158,6 +1158,7 @@ fun CalendarScreen() {
                 }
                 if (showStartDatePicker) {
                     DatePickerDialog(
+                        initialDate = eventStartDate,
                         onDateSelected = { date ->
                             eventStartDate = date
                             showStartDatePicker = false
@@ -1168,6 +1169,7 @@ fun CalendarScreen() {
 
                 if (showEndDatePicker) {
                     DatePickerDialog(
+                        initialDate = eventEndDate,
                         onDateSelected = { date ->
                             eventEndDate = date
                             showEndDatePicker = false

@@ -2,8 +2,8 @@ package com.example.ekhogo.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -50,6 +50,7 @@ fun DayView(
     }
 
     val formatter = DateTimeFormatter.ofPattern("d EEEE")
+    val isToday = selectedDay == LocalDate.now()
 
     val dayEvents = events.values.flatten().filter { event ->
         val start = LocalDate.parse(event.startDate.ifBlank { event.date })
@@ -64,73 +65,52 @@ fun DayView(
             .verticalScroll(rememberScrollState())
             .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp)
     ) {
-        Text(
-            text = selectedDay.format(formatter),
-            fontSize = 20.sp
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    if (isToday) Color(0xFFFFCDD2)
+                    else Color.Transparent,
+                    RoundedCornerShape(12.dp)
+                )
+                .padding(12.dp)
+        ) {
+            Text(
+                text = selectedDay.format(formatter),
+                fontSize = 20.sp,
+                color = if (isToday) Color(0xFF4A1F1F)
+                else MaterialTheme.colorScheme.onBackground
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        for (hour in 0..23) {
-            val displayHour = when {
-                hour == 0 -> "12 AM"
-                hour < 12 -> "$hour AM"
-                hour == 12 -> "12 PM"
-                else -> "${hour - 12} PM"
-            }
-
-            val eventsThisHour = dayEvents.filter { event ->
-                val startHour = when {
-                    event.isAllDay -> 0
-                    event.timeStart.contains("AM") || event.timeStart.contains("PM") -> {
-                        val hourPart = event.timeStart.substringBefore(":").toIntOrNull() ?: -1
-                        when {
-                            event.timeStart.contains("AM") && hourPart == 12 -> 0
-                            event.timeStart.contains("PM") && hourPart != 12 -> hourPart + 12
-                            else -> hourPart
-                        }
-                    }
-
-                    else -> event.timeStart.substringBefore(":").toIntOrNull() ?: -1
+        if (dayEvents.isEmpty()) {
+            Text(
+                text = "No events for this day",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        } else {
+            dayEvents
+                .sortedBy { timeToMinutes(it.timeStart) }
+                .forEach { event ->
+                    Text(
+                        text = "${event.timeStart} - ${event.timeEnd}\n${event.title}",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .fillMaxWidth()
+                            .clickable { onEventClick(event) }
+                            .background(
+                                color = getEventColor(event.color),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp)
+                    )
                 }
-
-                startHour == hour
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-            ) {
-                Text(
-                    text = displayHour,
-                    fontSize = 16.sp
-                )
-
-                Column(
-                    modifier = Modifier.padding(start = 24.dp)
-                ) {
-                    eventsThisHour.forEach { event ->
-
-                        Text(
-                            text = "${event.title}\n${event.timeStart} - ${event.timeEnd}",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            modifier = Modifier
-                                .padding(top = 4.dp)
-                                .fillMaxWidth()
-                                .clickable { onEventClick(event) }
-                                .background(
-                                    color = getEventColor(event.color),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .padding(8.dp)
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider()
         }
     }
 }

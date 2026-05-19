@@ -17,11 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.util.Locale
 
 @Composable
 fun CalendarTopBar(
@@ -32,6 +32,8 @@ fun CalendarTopBar(
     onViewModeChange: (CalendarViewMode) -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+
+    val currentLocale = LocalLocale.current.platformLocale
 
     Row(
         modifier = Modifier
@@ -51,7 +53,7 @@ fun CalendarTopBar(
             text = "${
                 currentMonth.month.getDisplayName(
                     TextStyle.FULL,
-                    Locale.getDefault()
+                    currentLocale
                 )
             } ${currentMonth.year}",
             fontSize = 22.sp

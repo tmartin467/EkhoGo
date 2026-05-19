@@ -10,8 +10,8 @@ class AmenitySuggestionRepository {
     private val auth = FirebaseAuth.getInstance()
 
     companion object {
-        const val REQUIRED_ADD_VOTES = 1
-        const val REQUIRED_REMOVE_VOTES = 1
+        const val REQUIRED_ADD_VOTES = 2
+        const val REQUIRED_REMOVE_VOTES = 2
     }
 
     fun currentUserId(): String {

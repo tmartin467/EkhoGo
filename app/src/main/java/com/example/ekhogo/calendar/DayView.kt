@@ -50,6 +50,7 @@ fun DayView(
     }
 
     val formatter = DateTimeFormatter.ofPattern("d EEEE")
+    val multiDayFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
     val isToday = selectedDay == LocalDate.now()
 
     val dayEvents = events.values.flatten().filter { event ->
@@ -97,7 +98,25 @@ fun DayView(
                 .sortedBy { timeToMinutes(it.timeStart) }
                 .forEach { event ->
                     Text(
-                        text = "${event.timeStart} - ${event.timeEnd}\n${event.title}",
+                        text = when {
+                            event.isAllDay -> {
+                                "All day\n${event.title}"
+                            }
+
+                            event.startDate != event.endDate -> {
+                                "${
+                                    LocalDate.parse(event.startDate).format(multiDayFormatter)
+                                }, ${event.timeStart} -\n" +
+                                        "${
+                                            LocalDate.parse(event.endDate).format(multiDayFormatter)
+                                        }, ${event.timeEnd}\n" +
+                                        event.title
+                            }
+
+                            else -> {
+                                "${event.timeStart} - ${event.timeEnd}\n${event.title}"
+                            }
+                        },
                         color = Color.White,
                         fontSize = 14.sp,
                         modifier = Modifier

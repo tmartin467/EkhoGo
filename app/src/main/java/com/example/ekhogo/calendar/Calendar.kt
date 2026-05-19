@@ -672,6 +672,16 @@ fun CalendarScreen() {
                             eventNotes = event.notes
                             isAllDay = event.isAllDay
 
+                            val startParts = event.timeStart.split(":", " ")
+                            startHour = startParts[0].toInt()
+                            startMinute = startParts[1].toInt()
+                            isStartAM = startParts[2] == "AM"
+
+                            val endParts = event.timeEnd.split(":", " ")
+                            endHour = endParts[0].toInt()
+                            endMinute = endParts[1].toInt()
+                            isEndAM = endParts[2] == "AM"
+
                             showAddEventDialog = true
                         }
                     )
@@ -779,8 +789,26 @@ fun CalendarScreen() {
                         selectedEvent?.let {
                             eventText = it.title
 
+                            eventStartDate = LocalDate.parse(it.startDate.ifBlank { it.date })
+                            eventEndDate = LocalDate.parse(it.endDate.ifBlank { it.date })
+
                             selectedColorName = it.color.ifBlank { "tomato" }
+
+                            eventLocation = it.location
+                            eventNotes = it.notes
                             isAllDay = it.isAllDay
+
+                            if (!it.isAllDay && it.timeStart.isNotBlank() && it.timeEnd.isNotBlank()) {
+                                val startParts = it.timeStart.split(":", " ")
+                                startHour = startParts[0].toInt()
+                                startMinute = startParts[1].toInt()
+                                isStartAM = startParts[2] == "AM"
+
+                                val endParts = it.timeEnd.split(":", " ")
+                                endHour = endParts[0].toInt()
+                                endMinute = endParts[1].toInt()
+                                isEndAM = endParts[2] == "AM"
+                            }
                         }
                     }
                     Row(
@@ -950,6 +978,12 @@ fun CalendarScreen() {
 
                     if (showStartPicker) {
                         TimePickerDialogUI(
+                            initialHour = if (isStartAM) {
+                                if (startHour == 12) 0 else startHour
+                            } else {
+                                if (startHour == 12) 12 else startHour + 12
+                            },
+                            initialMinute = startMinute,
                             onConfirm = { hour, minute ->
                                 val isPM = hour >= 12
                                 val displayHour = when {
@@ -969,6 +1003,12 @@ fun CalendarScreen() {
 
                     if (showEndPicker) {
                         TimePickerDialogUI(
+                            initialHour = if (isEndAM) {
+                                if (endHour == 12) 0 else endHour
+                            } else {
+                                if (endHour == 12) 12 else endHour + 12
+                            },
+                            initialMinute = endMinute,
                             onConfirm = { hour, minute ->
                                 val isPM = hour >= 12
                                 val displayHour = when {

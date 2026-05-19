@@ -55,7 +55,8 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         "Campus Dining",
         "Academic Building",
         "Student Housing",
-        "Student Services"
+        "Student Services",
+        "Parking Lots"
     )
 
     var searchText by remember { mutableStateOf("") }

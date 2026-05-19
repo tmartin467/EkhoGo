@@ -1,5 +1,7 @@
 package com.example.ekhogo.calendar
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
@@ -21,8 +25,29 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun DayView(
     selectedDay: LocalDate,
-    events: Map<LocalDate, List<Event>>
+    events: Map<LocalDate, List<Event>>,
+    onEventClick: (Event) -> Unit
 ) {
+
+    fun timeToMinutes(time: String): Int {
+        val hourPart = time.substringBefore(":").toIntOrNull() ?: 0
+
+        val minutePart =
+            time.substringAfter(":")
+                .substringBefore(" ")
+                .toIntOrNull() ?: 0
+
+        val isPm = time.contains("PM")
+        val isAm = time.contains("AM")
+
+        val hour24 = when {
+            isAm && hourPart == 12 -> 0
+            isPm && hourPart != 12 -> hourPart + 12
+            else -> hourPart
+        }
+
+        return hour24 * 60 + minutePart
+    }
 
     val formatter = DateTimeFormatter.ofPattern("d EEEE")
 
@@ -86,10 +111,20 @@ fun DayView(
                     modifier = Modifier.padding(start = 24.dp)
                 ) {
                     eventsThisHour.forEach { event ->
+
                         Text(
-                            text = event.title,
+                            text = "${event.title}\n${event.timeStart} - ${event.timeEnd}",
+                            color = Color.White,
                             fontSize = 14.sp,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .fillMaxWidth()
+                                .clickable { onEventClick(event) }
+                                .background(
+                                    color = getEventColor(event.color),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(8.dp)
                         )
                     }
                 }

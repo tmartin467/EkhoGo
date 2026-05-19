@@ -658,7 +658,22 @@ fun CalendarScreen() {
                 CalendarViewMode.Day -> {
                     DayView(
                         selectedDay = selectedDate,
-                        events = events
+                        events = events,
+                        onEventClick = { event ->
+                            selectedEvent = event
+
+                            eventText = event.title
+                            eventStartDate = LocalDate.parse(event.startDate.ifBlank { event.date })
+                            eventEndDate = LocalDate.parse(event.endDate.ifBlank { event.date })
+
+                            selectedColorName = event.color.ifBlank { "tomato" }
+
+                            eventLocation = event.location
+                            eventNotes = event.notes
+                            isAllDay = event.isAllDay
+
+                            showAddEventDialog = true
+                        }
                     )
                 }
             }

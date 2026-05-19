@@ -296,29 +296,35 @@ fun CalendarScreen() {
     ) { innerPadding ->
 
         Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .pointerInput(viewMode) {
-                    var totalDrag = 0f
+            modifier = if (viewMode == CalendarViewMode.Day) {
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            } else {
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .pointerInput(viewMode) {
+                        var totalDrag = 0f
 
-                    detectVerticalDragGestures(
-                        onDragStart = {
-                            totalDrag = 0f
-                        },
-                        onVerticalDrag = { _, dragAmount ->
-                            totalDrag += dragAmount
-                        },
-                        onDragEnd = {
-                            if (totalDrag < -80 && viewMode == CalendarViewMode.Month) {
-                                viewMode = CalendarViewMode.Week
-                            } else if (totalDrag > 80 && viewMode == CalendarViewMode.Week) {
-                                viewMode = CalendarViewMode.Month
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                totalDrag = 0f
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                totalDrag += dragAmount
+                            },
+                            onDragEnd = {
+                                if (totalDrag < -80 && viewMode == CalendarViewMode.Month) {
+                                    viewMode = CalendarViewMode.Week
+                                } else if (totalDrag > 80 && viewMode == CalendarViewMode.Week) {
+                                    viewMode = CalendarViewMode.Month
+                                }
                             }
-                        }
-                    )
-                },
+                        )
+                    }
+            },
             verticalArrangement = Arrangement.Top,
         ) {
             var menuOpen by remember { mutableStateOf(false) }
@@ -395,29 +401,56 @@ fun CalendarScreen() {
                 currentMonth = currentMonth,
                 viewMode = viewMode,
                 onPreviousMonth = {
-                    currentMonth = currentMonth.minusMonths(1)
+                    when (viewMode) {
 
-                    selectedDate =
-                        if (currentMonth.year == LocalDate.now().year &&
-                            currentMonth.month == LocalDate.now().month
-                        ) {
-                            LocalDate.now()
-                        } else {
-                            currentMonth.atDay(1)
+                        CalendarViewMode.Month -> {
+                            currentMonth = currentMonth.minusMonths(1)
+
+                            selectedDate =
+                                if (
+                                    currentMonth.year == LocalDate.now().year &&
+                                    currentMonth.month == LocalDate.now().month
+                                ) {
+                                    LocalDate.now()
+                                } else {
+                                    currentMonth.atDay(1)
+                                }
                         }
+
+                        CalendarViewMode.Week -> {
+                            selectedDate = selectedDate.minusWeeks(1)
+                        }
+
+                        CalendarViewMode.Day -> {
+                            selectedDate = selectedDate.minusDays(1)
+                        }
+                    }
                 },
 
                 onNextMonth = {
-                    currentMonth = currentMonth.plusMonths(1)
+                    when (viewMode) {
+                        CalendarViewMode.Month -> {
+                            currentMonth = currentMonth.plusMonths(1)
 
-                    selectedDate =
-                        if (currentMonth.year == LocalDate.now().year &&
-                            currentMonth.month == LocalDate.now().month
-                        ) {
-                            LocalDate.now()
-                        } else {
-                            currentMonth.atDay(1)
+                            selectedDate =
+                                if (
+                                    currentMonth.year == LocalDate.now().year &&
+                                    currentMonth.month == LocalDate.now().month
+                                ) {
+                                    LocalDate.now()
+                                } else {
+                                    currentMonth.atDay(1)
+                                }
                         }
+
+                        CalendarViewMode.Week -> {
+                            selectedDate = selectedDate.plusWeeks(1)
+                        }
+
+                        CalendarViewMode.Day -> {
+                            selectedDate = selectedDate.plusDays(1)
+                        }
+                    }
                 },
                 onViewModeChange = { viewMode = it }
             )

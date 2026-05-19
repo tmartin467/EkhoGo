@@ -26,6 +26,13 @@ fun DayView(
 
     val formatter = DateTimeFormatter.ofPattern("d EEEE")
 
+    val dayEvents = events.values.flatten().filter { event ->
+        val start = LocalDate.parse(event.startDate.ifBlank { event.date })
+        val end = LocalDate.parse(event.endDate.ifBlank { event.date })
+
+        selectedDay >= start && selectedDay <= end
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -47,6 +54,24 @@ fun DayView(
                 else -> "${hour - 12} PM"
             }
 
+            val eventsThisHour = dayEvents.filter { event ->
+                val startHour = when {
+                    event.isAllDay -> 0
+                    event.timeStart.contains("AM") || event.timeStart.contains("PM") -> {
+                        val hourPart = event.timeStart.substringBefore(":").toIntOrNull() ?: -1
+                        when {
+                            event.timeStart.contains("AM") && hourPart == 12 -> 0
+                            event.timeStart.contains("PM") && hourPart != 12 -> hourPart + 12
+                            else -> hourPart
+                        }
+                    }
+
+                    else -> event.timeStart.substringBefore(":").toIntOrNull() ?: -1
+                }
+
+                startHour == hour
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -56,6 +81,18 @@ fun DayView(
                     text = displayHour,
                     fontSize = 16.sp
                 )
+
+                Column(
+                    modifier = Modifier.padding(start = 24.dp)
+                ) {
+                    eventsThisHour.forEach { event ->
+                        Text(
+                            text = event.title,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
             }
 
             HorizontalDivider()

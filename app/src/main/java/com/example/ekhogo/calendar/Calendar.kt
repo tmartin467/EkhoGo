@@ -554,8 +554,10 @@ fun CalendarScreen() {
                                                 val eventsForDay =
                                                     events.values.flatten().filter { event ->
                                                         val start =
-                                                            LocalDate.parse(event.startDate)
-                                                        val end = LocalDate.parse(event.endDate)
+                                                            LocalDate.parse(event.startDate.ifBlank { event.date })
+                                                        val end =
+                                                            LocalDate.parse(event.endDate.ifBlank { event.date })
+
                                                         cellDate >= start && cellDate <= end
                                                     }
 
@@ -563,15 +565,13 @@ fun CalendarScreen() {
                                                     val eventBars = eventsForDay.take(3)
 
                                                     val singleDayEvents = eventBars.filter {
-                                                        LocalDate.parse(it.startDate) == LocalDate.parse(
-                                                            it.endDate
-                                                        )
+                                                        LocalDate.parse(it.startDate.ifBlank { it.date }) == LocalDate.parse(
+                                                            it.endDate.ifBlank { it.date })
                                                     }
 
                                                     val multiDayEvents = eventBars.filter {
-                                                        LocalDate.parse(it.startDate) != LocalDate.parse(
-                                                            it.endDate
-                                                        )
+                                                        LocalDate.parse(it.startDate.ifBlank { it.date }) != LocalDate.parse(
+                                                            it.endDate.ifBlank { it.date })
                                                     }
 
                                                     Column(

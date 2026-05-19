@@ -66,7 +66,7 @@ fun CampusMap(
         [
           {
             "elementType": "geometry",
-            "stylers": [{ "color": "#16181C" }]
+            "stylers": [{ "color": "#3F3F3F" }]
           },
           {
             "elementType": "labels.text.fill",

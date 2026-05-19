@@ -40,6 +40,8 @@ fun WeekCalendarView(
     ) {
         weekDays.forEach { date ->
             val isSelected = date == selectedDate
+            val isToday = date == LocalDate.now()
+
             val eventsForDay = events.values.flatten().filter { event ->
                 val start = LocalDate.parse(event.startDate.ifBlank { event.date })
                 val end = LocalDate.parse(event.endDate.ifBlank { event.date })
@@ -77,15 +79,21 @@ fun WeekCalendarView(
                             .size(36.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surface
+                                when {
+                                    isSelected -> MaterialTheme.colorScheme.primary
+                                    isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                                    else -> MaterialTheme.colorScheme.surface
+                                }
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
                         Text(
                             text = date.dayOfMonth.toString(),
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface,
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                isToday -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            },
                             modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                         )
                     }

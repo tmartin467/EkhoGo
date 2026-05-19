@@ -1,0 +1,17 @@
+{
+  "name": "ekhogo-functions",
+  "description": "Firebase Functions for EkhoGo",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "deploy": "firebase deploy --only functions",
+    "lint": "node --check index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  },
+  "private": true
+}

@@ -104,7 +104,10 @@ fun FriendsScreen(
     val displayedClassmates =
         if (selectedTab == FriendsTab.ADD_FRIENDS) {
             visibleClassmates.filter { currentFriend ->
-                currentFriend.name.contains(searchText, ignoreCase = true)
+                currentFriend.name.contains(searchText, ignoreCase = true) ||
+                        currentFriend.classesList.any { className ->
+                            className.contains(searchText, ignoreCase = true)
+                        }
             }
         } else {
             visibleClassmates
@@ -177,7 +180,7 @@ fun FriendsScreen(
             OutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
-                label = { Text("Search classmates") },
+                label = { Text("Search classmates by name or class") },
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -151,7 +151,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
             ) {
 
                 // TOP:
@@ -250,23 +250,32 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
 
                         val listState = rememberLazyListState()
 
-                        Text(
-                            text = titleName,
-                            fontSize = 24.sp,
-                            modifier = Modifier
-                                .clickable(enabled = isGroup) {
-                                    showParticpants.value = true
-                                    viewModel.loadParticipants()
-                                }
-                                .border(
-                                width = 1.dp,
-                                color = Color.Gray,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            textAlign = TextAlign.Center
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = titleName,
+                                fontSize = 24.sp,
+                                modifier = Modifier
+                                    .clickable(enabled = isGroup) {
+                                        showParticpants.value = true
+                                        viewModel.loadParticipants()
+                                    }
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.Gray,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ,
+                                textAlign = TextAlign.Center
 
-                        )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
 
                         LaunchedEffect(messages.size) {
                             if (messages.isNotEmpty()) {

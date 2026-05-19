@@ -11,6 +11,7 @@ data class Event(
     val location: String = "",
     val notes: String = "",
     val source: String = "manual",
+    val googleEventId: String = "",
     val startDate: String = "",
     val endDate: String = ""
 )

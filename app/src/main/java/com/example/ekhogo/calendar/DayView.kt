@@ -6,7 +6,11 @@ import java.time.LocalDate
 
 @Composable
 fun DayView(
-    selectedDay: LocalDate
+    selectedDay: LocalDate,
+    events: Map<LocalDate, List<Event>>
 ) {
+    val dayEvents = events[selectedDay] ?: emptyList()
+
     Text(text = "Day view for $selectedDay")
+    Text(text = "Events: ${dayEvents.size}")
 }

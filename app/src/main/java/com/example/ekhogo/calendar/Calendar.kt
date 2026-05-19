@@ -478,7 +478,6 @@ fun CalendarScreen() {
                                         )
                                         .clickable(enabled = cellDate != null) {
                                             selectedDate = cellDate!!
-                                            viewMode = CalendarViewMode.Day
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -617,12 +616,17 @@ fun CalendarScreen() {
                     WeekCalendarView(
                         selectedDate = selectedDate,
                         events = events,
-                        onDateSelected = { selectedDate = it }
+                        onDateSelected = {
+                            selectedDate = it
+                        }
                     )
                 }
 
                 CalendarViewMode.Day -> {
-                    DayView(selectedDay = selectedDate)
+                    DayView(
+                        selectedDay = selectedDate,
+                        events = events
+                    )
                 }
             }
 

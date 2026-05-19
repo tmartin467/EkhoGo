@@ -203,6 +203,9 @@ fun CalendarScreen() {
 
     var eventErrorMessage by remember { mutableStateOf<String?>(null) }
 
+    var selectedView by remember { mutableStateOf("Month") }
+    var selectedDay by remember { mutableStateOf(LocalDate.now()) }
+
     val dialogDateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
     val googleSignInClient = remember {
@@ -475,6 +478,7 @@ fun CalendarScreen() {
                                         )
                                         .clickable(enabled = cellDate != null) {
                                             selectedDate = cellDate!!
+                                            viewMode = CalendarViewMode.Day
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -618,10 +622,7 @@ fun CalendarScreen() {
                 }
 
                 CalendarViewMode.Day -> {
-                    Text(
-                        text = "Day view coming soon",
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    DayView(selectedDay = selectedDate)
                 }
             }
 

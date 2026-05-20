@@ -7,11 +7,17 @@ import java.util.Calendar
 
 @Composable
 fun DatePickerDialog(
+    initialDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val calendar = Calendar.getInstance()
+
+    val calendar = Calendar.getInstance().apply {
+        set(Calendar.YEAR, initialDate.year)
+        set(Calendar.MONTH, initialDate.monthValue - 1)
+        set(Calendar.DAY_OF_MONTH, initialDate.dayOfMonth)
+    }
 
     android.app.DatePickerDialog(
         context,

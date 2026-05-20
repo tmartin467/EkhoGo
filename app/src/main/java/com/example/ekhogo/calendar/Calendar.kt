@@ -5,9 +5,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,9 +26,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,7 +51,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -61,8 +68,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 
 fun getMonthGrid(yearMonth: YearMonth): List<LocalDate?> {
@@ -92,49 +97,62 @@ fun getMonthGrid(yearMonth: YearMonth): List<LocalDate?> {
 fun MonthDayCell(
     date: LocalDate?,
     isSelected: Boolean,
-    hasEvents: Boolean,
-    eventColor: Color,
+    eventColor: String?,
     onClick: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val isToday = date == LocalDate.now()
+
+    val dayBackgroundColor = when {
+        date == null -> Color.Transparent
+        isSelected -> MaterialTheme.colorScheme.primary
+        isToday -> if (isDarkTheme) Color(0xFF4A1F1F) else Color(0xFFFFD6D6)
+        else -> Color.Transparent
+    }
+
+    val dayTextColor = when {
+        date == null -> Color.Transparent
+        isSelected -> MaterialTheme.colorScheme.onPrimary
+        isToday -> if (isDarkTheme) Color.White else Color(0xFF4A1F1F)
+        else -> MaterialTheme.colorScheme.onBackground
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .padding(6.dp)
+            .padding(4.dp)
             .clickable(enabled = date != null) { onClick() }
     ) {
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .clip(CircleShape)
-                .background(
-                    when {
-                        date == null -> Color.Transparent
-                        isSelected -> MaterialTheme.colorScheme.primary
-                        else -> Color.LightGray
-                    }
-                ),
+                .clip(RoundedCornerShape(12.dp))
+                .background(dayBackgroundColor),
             contentAlignment = Alignment.Center
         ) {
             if (date != null) {
                 Text(
                     text = date.dayOfMonth.toString(),
-                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground
+                    color = dayTextColor
                 )
             }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(6.dp)
-                    .background(eventColor, CircleShape)
-            )
         }
 
-    }
+        Spacer(modifier = Modifier.height(4.dp))
 
-    Spacer(modifier = Modifier.height(4.dp))
+        if (eventColor != null) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(getEventColor(eventColor))
+            )
+        } else {
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+    }
 }
+
 
 @Composable
 fun CalendarScreen() {
@@ -143,6 +161,8 @@ fun CalendarScreen() {
     val scope = rememberCoroutineScope()
 
     var checkLink by remember { mutableStateOf(false) }
+    var isGoogleLinking by remember { mutableStateOf(false) }
+
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
 
@@ -151,7 +171,6 @@ fun CalendarScreen() {
     var eventText by remember { mutableStateOf("") }
     var showAddEventDialog by remember { mutableStateOf(false) }
 
-    var selectedColor by remember { mutableStateOf(Color.Red) }
     var showColorPicker by remember { mutableStateOf(false) }
 
     var startHour by remember { mutableStateOf(9) }
@@ -178,6 +197,15 @@ fun CalendarScreen() {
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
+    var selectedColorName by remember { mutableStateOf("tomato") }
+
+    var viewMode by remember { mutableStateOf(CalendarViewMode.Month) }
+
+    var eventErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    var selectedView by remember { mutableStateOf("Month") }
+    var selectedDay by remember { mutableStateOf(LocalDate.now()) }
+
     val dialogDateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
 
     val googleSignInClient = remember {
@@ -200,26 +228,32 @@ fun CalendarScreen() {
 
         try {
             val account = task.getResult(ApiException::class.java)
-            val email = account.email
-            checkLink = true
 
             scope.launch {
                 val accessToken = getAccessToken(context, account)
 
                 if (accessToken != null) {
+                    checkLink = true
                     fetchGoogleEventsAndSaveToFirestore(accessToken)
 
                     kotlinx.coroutines.delay(800)
 
                     eventsFireBase { resultMap ->
                         events = resultMap
+                        isGoogleLinking = false
                     }
                 } else {
                     println("Google access token was null")
+                    checkLink = false
+                    isGoogleLinking = false
                 }
             }
 
         } catch (e: Exception) {
+            println("Google sign-in failed: ${e.message}")
+            e.printStackTrace()
+            checkLink = false
+            isGoogleLinking = false
         }
     }
 
@@ -262,20 +296,72 @@ fun CalendarScreen() {
     ) { innerPadding ->
 
         Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+            modifier = if (viewMode == CalendarViewMode.Day) {
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            } else {
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .pointerInput(viewMode) {
+                        var totalDrag = 0f
+
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                totalDrag = 0f
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                totalDrag += dragAmount
+                            },
+                            onDragEnd = {
+                                if (totalDrag < -80 && viewMode == CalendarViewMode.Month) {
+                                    viewMode = CalendarViewMode.Week
+                                } else if (totalDrag > 80 && viewMode == CalendarViewMode.Week) {
+                                    viewMode = CalendarViewMode.Month
+                                }
+                            }
+                        )
+                    }
+            },
             verticalArrangement = Arrangement.Top,
         ) {
+            var menuOpen by remember { mutableStateOf(false) }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // ☰ Hamburger
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Calendar view menu")
+                    }
+
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false }
+                    ) {
+                        CalendarViewMode.values().forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode.name) },
+                                onClick = {
+                                    viewMode = mode
+                                    menuOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
                 Button(
+                    enabled = !isGoogleLinking,
                     onClick = {
                         if (!checkLink) {
+                            isGoogleLinking = true
                             val signInIntent = googleSignInClient.signInIntent
                             signInLauncher.launch(signInIntent)
                         } else {
@@ -306,185 +392,249 @@ fun CalendarScreen() {
                             }
                         }
                     },
-                    modifier = Modifier.padding(start = 16.dp)
                 ) {
                     Text(if (!checkLink) "Link to Google" else "Unlink Google")
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { currentMonth = currentMonth.minusMonths(1) }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronLeft,
-                        contentDescription = "Previous month"
-                    )
-                }
+            CalendarTopBar(
+                currentMonth = currentMonth,
+                viewMode = viewMode,
+                onPreviousMonth = {
+                    when (viewMode) {
 
-                Text(
-                    text = "${
-                        currentMonth.month.getDisplayName(
-                            TextStyle.FULL,
-                            Locale.getDefault()
-                        )
-                    } ${currentMonth.year}",
-                    fontSize = 22.sp
-                )
+                        CalendarViewMode.Month -> {
+                            currentMonth = currentMonth.minusMonths(1)
 
-                IconButton(
-                    onClick = { currentMonth = currentMonth.plusMonths(1) }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "Next month"
-                    )
-                }
-
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val firstDayOfMonth = currentMonth.atDay(1)
-            val daysInMonth = currentMonth.lengthOfMonth()
-            val startOffset = firstDayOfMonth.dayOfWeek.value % 7
-            val totalCells = startOffset + daysInMonth
-            val rows = (totalCells + 6) / 7
-
-            for (row in 0 until rows) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    for (col in 0..6) {
-                        val cellIndex = row * 7 + col
-                        val dayNumber = cellIndex - startOffset + 1
-                        val cellDate = if (dayNumber in 1..daysInMonth) {
-                            currentMonth.atDay(dayNumber)
-                        } else {
-                            null
+                            selectedDate =
+                                if (
+                                    currentMonth.year == LocalDate.now().year &&
+                                    currentMonth.month == LocalDate.now().month
+                                ) {
+                                    LocalDate.now()
+                                } else {
+                                    currentMonth.atDay(1)
+                                }
                         }
-                        val isSelected = cellDate == selectedDate
-                        val isToday = cellDate == LocalDate.now()
 
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp)
-                                .padding(2.dp)
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable(enabled = cellDate != null) {
-                                    selectedDate = cellDate!!
-                                },
-                            contentAlignment = Alignment.Center
+                        CalendarViewMode.Week -> {
+                            selectedDate = selectedDate.minusWeeks(1)
+                        }
+
+                        CalendarViewMode.Day -> {
+                            selectedDate = selectedDate.minusDays(1)
+                        }
+                    }
+                },
+
+                onNextMonth = {
+                    when (viewMode) {
+                        CalendarViewMode.Month -> {
+                            currentMonth = currentMonth.plusMonths(1)
+
+                            selectedDate =
+                                if (
+                                    currentMonth.year == LocalDate.now().year &&
+                                    currentMonth.month == LocalDate.now().month
+                                ) {
+                                    LocalDate.now()
+                                } else {
+                                    currentMonth.atDay(1)
+                                }
+                        }
+
+                        CalendarViewMode.Week -> {
+                            selectedDate = selectedDate.plusWeeks(1)
+                        }
+
+                        CalendarViewMode.Day -> {
+                            selectedDate = selectedDate.plusDays(1)
+                        }
+                    }
+                },
+                onViewModeChange = { viewMode = it }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            when (viewMode) {
+                CalendarViewMode.Month -> {
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT").forEach { day ->
+                            Text(
+                                text = day,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val firstDayOfMonth = currentMonth.atDay(1)
+                    val daysInMonth = currentMonth.lengthOfMonth()
+                    val startOffset = firstDayOfMonth.dayOfWeek.value % 7
+                    val totalCells = startOffset + daysInMonth
+                    val rows = (totalCells + 6) / 7
+
+                    for (row in 0 until rows) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            if (cellDate != null) {
+                            for (col in 0..6) {
+                                val cellIndex = row * 7 + col
+                                val dayNumber = cellIndex - startOffset + 1
+                                val cellDate = if (dayNumber in 1..daysInMonth) {
+                                    currentMonth.atDay(dayNumber)
+                                } else {
+                                    null
+                                }
+                                val isSelected = cellDate == selectedDate
+                                val isToday = cellDate == LocalDate.now()
+                                val isDarkTheme = isSystemInDarkTheme()
+
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            when {
-                                                isSelected -> MaterialTheme.colorScheme.primary
-                                                isToday -> Color(0xFFFFE5E5)
-                                                else -> Color.Transparent
-                                            }
-                                        ),
-                                    contentAlignment = Alignment.TopStart
+                                        .weight(1f)
+                                        .height(56.dp)
+                                        .padding(2.dp)
+                                        .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outline,
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable(enabled = cellDate != null) {
+                                            selectedDate = cellDate!!
+                                        },
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = dayNumber.toString(),
-                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground,
-                                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-                                    )
-
                                     if (cellDate != null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(
+                                                    when {
+                                                        isSelected -> MaterialTheme.colorScheme.primary
+                                                        isToday -> if (isDarkTheme) Color(
+                                                            0xFF4A1F1F
+                                                        ) else Color(
+                                                            0xFFFFD6D6
+                                                        )
 
-                                        val eventsForDay = events.values.flatten().filter { event ->
-                                            val start = LocalDate.parse(event.startDate)
-                                            val end = LocalDate.parse(event.endDate)
-                                            cellDate >= start && cellDate <= end
-                                        }
+                                                        else -> Color.Transparent
+                                                    }
+                                                ),
+                                            contentAlignment = Alignment.TopStart
+                                        ) {
+                                            Text(
+                                                text = dayNumber.toString(),
+                                                color = when {
+                                                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                                                    isToday -> if (isDarkTheme) Color.White else Color(
+                                                        0xFF4A1F1F
+                                                    )
 
-                                        if (eventsForDay.isNotEmpty()) {
-                                            val eventBars = eventsForDay.take(3)
+                                                    else -> MaterialTheme.colorScheme.onBackground
+                                                },
+                                                modifier = Modifier.padding(
+                                                    start = 4.dp,
+                                                    top = 2.dp
+                                                )
+                                            )
 
-                                            val singleDayEvents = eventBars.filter {
-                                                LocalDate.parse(it.startDate) == LocalDate.parse(it.endDate)
-                                            }
+                                            if (cellDate != null) {
 
-                                            val multiDayEvents = eventBars.filter {
-                                                LocalDate.parse(it.startDate) != LocalDate.parse(it.endDate)
-                                            }
+                                                val eventsForDay =
+                                                    events.values.flatten().filter { event ->
+                                                        val start =
+                                                            LocalDate.parse(event.startDate.ifBlank { event.date })
+                                                        val end =
+                                                            LocalDate.parse(event.endDate.ifBlank { event.date })
 
-                                            Column(
-                                                modifier = Modifier
-                                                    .align(Alignment.BottomCenter)
-                                                    .padding(bottom = 3.dp),
-                                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    singleDayEvents.forEach { event ->
-                                                        val barColor = when (event.color) {
-                                                            "blue" -> Color.Blue
-                                                            "green" -> Color.Green
-                                                            "yellow" -> Color.Yellow
-                                                            else -> Color.Red
+                                                        cellDate >= start && cellDate <= end
+                                                    }
+
+                                                if (eventsForDay.isNotEmpty()) {
+                                                    val eventBars = eventsForDay.take(3)
+
+                                                    val singleDayEvents = eventBars.filter {
+                                                        LocalDate.parse(it.startDate.ifBlank { it.date }) == LocalDate.parse(
+                                                            it.endDate.ifBlank { it.date })
+                                                    }
+
+                                                    val multiDayEvents = eventBars.filter {
+                                                        LocalDate.parse(it.startDate.ifBlank { it.date }) != LocalDate.parse(
+                                                            it.endDate.ifBlank { it.date })
+                                                    }
+
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .align(Alignment.BottomCenter)
+                                                            .padding(bottom = 3.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(
+                                                            2.dp
+                                                        ),
+                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                    ) {
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(
+                                                                2.dp
+                                                            ),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            singleDayEvents.forEach { event ->
+                                                                val barColor =
+                                                                    getEventColor(event.color)
+
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .size(5.dp)
+                                                                        .background(
+                                                                            barColor,
+                                                                            CircleShape
+                                                                        )
+                                                                )
+                                                            }
                                                         }
 
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(5.dp)
-                                                                .background(barColor, CircleShape)
-                                                        )
+                                                        multiDayEvents.forEach { event ->
+                                                            val start =
+                                                                LocalDate.parse(event.startDate)
+                                                            val end =
+                                                                LocalDate.parse(event.endDate)
+
+                                                            val barColor =
+                                                                getEventColor(event.color)
+
+                                                            val shape = when {
+                                                                cellDate == start -> RoundedCornerShape(
+                                                                    topStart = 50.dp,
+                                                                    bottomStart = 50.dp
+                                                                )
+
+                                                                cellDate == end -> RoundedCornerShape(
+                                                                    topEnd = 50.dp,
+                                                                    bottomEnd = 50.dp
+                                                                )
+
+                                                                else -> RoundedCornerShape(0.dp)
+                                                            }
+
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .width(26.dp)
+                                                                    .height(5.dp)
+                                                                    .background(barColor, shape)
+                                                            )
+                                                        }
                                                     }
-                                                }
-
-                                                multiDayEvents.forEach { event ->
-                                                    val start = LocalDate.parse(event.startDate)
-                                                    val end = LocalDate.parse(event.endDate)
-
-                                                    val barColor = when (event.color) {
-                                                        "blue" -> Color.Blue
-                                                        "green" -> Color.Green
-                                                        "yellow" -> Color.Yellow
-                                                        else -> Color.Red
-                                                    }
-
-                                                    val shape = when {
-                                                        cellDate == start -> RoundedCornerShape(
-                                                            topStart = 50.dp,
-                                                            bottomStart = 50.dp
-                                                        )
-
-                                                        cellDate == end -> RoundedCornerShape(
-                                                            topEnd = 50.dp,
-                                                            bottomEnd = 50.dp
-                                                        )
-
-                                                        else -> RoundedCornerShape(0.dp)
-                                                    }
-
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .width(26.dp)
-                                                            .height(5.dp)
-                                                            .background(barColor, shape)
-                                                    )
                                                 }
                                             }
                                         }
@@ -494,7 +644,51 @@ fun CalendarScreen() {
                         }
                     }
                 }
+
+                CalendarViewMode.Week -> {
+                    WeekCalendarView(
+                        selectedDate = selectedDate,
+                        events = events,
+                        onDateSelected = {
+                            selectedDate = it
+                        }
+                    )
+                }
+
+                CalendarViewMode.Day -> {
+                    DayView(
+                        selectedDay = selectedDate,
+                        events = events,
+                        onEventClick = { event ->
+                            selectedEvent = event
+
+                            eventText = event.title
+                            eventStartDate = LocalDate.parse(event.startDate.ifBlank { event.date })
+                            eventEndDate = LocalDate.parse(event.endDate.ifBlank { event.date })
+
+                            selectedColorName = event.color.ifBlank { "tomato" }
+
+                            eventLocation = event.location
+                            eventNotes = event.notes
+                            isAllDay = event.isAllDay
+
+                            val startParts = event.timeStart.split(":", " ")
+                            startHour = startParts[0].toInt()
+                            startMinute = startParts[1].toInt()
+                            isStartAM = startParts[2] == "AM"
+
+                            val endParts = event.timeEnd.split(":", " ")
+                            endHour = endParts[0].toInt()
+                            endMinute = endParts[1].toInt()
+                            isEndAM = endParts[2] == "AM"
+
+                            showAddEventDialog = true
+                        }
+                    )
+                }
             }
+
+
             Spacer(modifier = Modifier.height(24.dp))
 
             val formatter = DateTimeFormatter.ofPattern("EEE, MMMM d")
@@ -519,15 +713,24 @@ fun CalendarScreen() {
                             .padding(start = 16.dp)
                             .clickable {
                                 selectedEvent = event
+
+                                eventText = event.title
+
+                                eventStartDate =
+                                    LocalDate.parse(event.startDate.ifBlank { event.date })
+                                eventEndDate = LocalDate.parse(event.endDate.ifBlank { event.date })
+
+                                selectedColorName = event.color.ifBlank { "tomato" }
+
+                                eventLocation = event.location
+                                eventNotes = event.notes
+                                isAllDay = event.isAllDay
+
                                 showAddEventDialog = true
                             }
                     ) {
-                        val dotColor = when (event.color) {
-                            "blue" -> Color.Blue
-                            "green" -> Color.Green
-                            "yellow" -> Color.Yellow
-                            else -> Color.Red
-                        }
+                        val dotColor = getEventColor(event.color)
+
                         Box(
                             modifier = Modifier
                                 .size(10.dp)
@@ -561,6 +764,10 @@ fun CalendarScreen() {
 
     if (showAddEventDialog) {
         Dialog(onDismissRequest = { showAddEventDialog = false }) {
+
+            val dialogTextColor = MaterialTheme.colorScheme.onSurface
+            val dialogMutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val dialogAccentColor = MaterialTheme.colorScheme.primary
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -571,21 +778,37 @@ fun CalendarScreen() {
                     modifier = Modifier
                         .fillMaxWidth(0.96f)
                         .fillMaxHeight(0.82f)
-                        .background(Color.White, shape = RoundedCornerShape(28.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(28.dp)
+                        )
                         .padding(20.dp)
                 ) {
+
                     LaunchedEffect(selectedEvent) {
                         selectedEvent?.let {
                             eventText = it.title
 
-                            selectedColor = when (it.color) {
-                                "blue" -> Color.Blue
-                                "green" -> Color.Green
-                                "yellow" -> Color.Yellow
-                                else -> Color.Red
-                            }
+                            eventStartDate = LocalDate.parse(it.startDate.ifBlank { it.date })
+                            eventEndDate = LocalDate.parse(it.endDate.ifBlank { it.date })
 
+                            selectedColorName = it.color.ifBlank { "tomato" }
+
+                            eventLocation = it.location
+                            eventNotes = it.notes
                             isAllDay = it.isAllDay
+
+                            if (!it.isAllDay && it.timeStart.isNotBlank() && it.timeEnd.isNotBlank()) {
+                                val startParts = it.timeStart.split(":", " ")
+                                startHour = startParts[0].toInt()
+                                startMinute = startParts[1].toInt()
+                                isStartAM = startParts[2] == "AM"
+
+                                val endParts = it.timeEnd.split(":", " ")
+                                endHour = endParts[0].toInt()
+                                endMinute = endParts[1].toInt()
+                                isEndAM = endParts[2] == "AM"
+                            }
                         }
                     }
                     Row(
@@ -594,7 +817,7 @@ fun CalendarScreen() {
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
-                                .background(selectedColor, shape = CircleShape)
+                                .background(getEventColor(selectedColorName), shape = CircleShape)
                                 .clickable { showColorPicker = true }
                         )
 
@@ -602,7 +825,10 @@ fun CalendarScreen() {
 
                         OutlinedTextField(
                             value = eventText,
-                            onValueChange = { eventText = it },
+                            onValueChange = {
+                                eventText = it
+                                eventErrorMessage = null
+                            },
                             placeholder = { Text("Add title") },
                             modifier = Modifier.weight(1f)
                         )
@@ -633,7 +859,7 @@ fun CalendarScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("All day")
+                        Text("All day", color = dialogTextColor)
 
                         Switch(
                             checked = isAllDay,
@@ -648,9 +874,10 @@ fun CalendarScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Start date")
+                        Text("Start date", color = dialogTextColor)
                         Text(
                             text = eventStartDate.format(dialogDateFormatter),
+                            color = dialogAccentColor,
                             modifier = Modifier.clickable {
                                 showStartDatePicker = true
                             }
@@ -667,6 +894,7 @@ fun CalendarScreen() {
                         Text("End date")
                         Text(
                             text = eventEndDate.format(dialogDateFormatter),
+                            color = dialogAccentColor,
                             modifier = Modifier.clickable {
                                 showEndDatePicker = true
                             }
@@ -674,23 +902,36 @@ fun CalendarScreen() {
                     }
 
                     if (showColorPicker) {
-                        Row(
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
                             listOf(
-                                Color.Red,
-                                Color.Blue,
-                                Color.Green,
-                                Color.Yellow
-                            ).forEach { color ->
+                                "tomato",
+                                "flamingo",
+                                "tangerine",
+                                "banana",
+                                "sage",
+                                "basil",
+                                "peacock",
+                                "blueberry",
+                                "lavender",
+                                "grape",
+                                "graphite"
+                            ).forEach { colorName ->
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .background(color, CircleShape)
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(getEventColor(colorName))
+                                        .border(
+                                            width = if (selectedColorName == colorName) 3.dp else 0.dp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            shape = CircleShape
+                                        )
                                         .clickable {
-                                            selectedColor = color
-                                            showColorPicker = false
+                                            selectedColorName = colorName
                                         }
                                 )
                             }
@@ -705,7 +946,7 @@ fun CalendarScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Start")
+                            Text("Start", color = dialogTextColor)
 
                             TextButton(onClick = { showStartPicker = true }) {
                                 Text(
@@ -723,7 +964,7 @@ fun CalendarScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("End")
+                            Text("End", color = dialogTextColor)
 
                             TextButton(onClick = { showEndPicker = true }) {
                                 Text(
@@ -737,6 +978,12 @@ fun CalendarScreen() {
 
                     if (showStartPicker) {
                         TimePickerDialogUI(
+                            initialHour = if (isStartAM) {
+                                if (startHour == 12) 0 else startHour
+                            } else {
+                                if (startHour == 12) 12 else startHour + 12
+                            },
+                            initialMinute = startMinute,
                             onConfirm = { hour, minute ->
                                 val isPM = hour >= 12
                                 val displayHour = when {
@@ -756,6 +1003,12 @@ fun CalendarScreen() {
 
                     if (showEndPicker) {
                         TimePickerDialogUI(
+                            initialHour = if (isEndAM) {
+                                if (endHour == 12) 0 else endHour
+                            } else {
+                                if (endHour == 12) 12 else endHour + 12
+                            },
+                            initialMinute = endMinute,
                             onConfirm = { hour, minute ->
                                 val isPM = hour >= 12
                                 val displayHour = when {
@@ -773,46 +1026,73 @@ fun CalendarScreen() {
                         )
                     }
 
+                    eventErrorMessage?.let {
+                        Text(
+                            text = it,
+                            color = Color.Red,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
                     Button(
                         onClick = {
-                            val user = FirebaseAuth.getInstance().currentUser
-                            val uid = user?.uid
-                            val db = FirebaseFirestore.getInstance()
+                            eventErrorMessage = null
 
-                            val selectedTimeStart = if (isAllDay) {
-                                ""
-                            } else {
+                            if (eventText.isBlank()) {
+                                eventErrorMessage = "Please enter an event title."
+                                return@Button
+                            }
+
+                            if (eventEndDate.isBefore(eventStartDate)) {
+                                eventErrorMessage =
+                                    "Incorrect placement. Please place logical dates."
+                                return@Button
+                            }
+
+                            val titleToSave = eventText
+                            val locationToSave = eventLocation
+                            val notesToSave = eventNotes
+                            val startDateToSave = eventStartDate
+                            val endDateToSave = eventEndDate
+                            val colorToSave = selectedColorName
+                            val allDayToSave = isAllDay
+                            val editingEvent = selectedEvent
+
+                            val selectedTimeStart = if (allDayToSave) "" else {
                                 "${startHour}:${
                                     startMinute.toString().padStart(2, '0')
                                 } ${if (isStartAM) "AM" else "PM"}"
                             }
 
-                            val selectedTimeEnd = if (isAllDay) {
-                                ""
-                            } else {
+                            val selectedTimeEnd = if (allDayToSave) "" else {
                                 "${endHour}:${
                                     endMinute.toString().padStart(2, '0')
                                 } ${if (isEndAM) "AM" else "PM"}"
                             }
 
-                            if (uid != null && eventText.isNotBlank()) {
+                            showAddEventDialog = false
+                            eventText = ""
+                            eventLocation = ""
+                            eventNotes = ""
+                            selectedEvent = null
+
+                            val user = FirebaseAuth.getInstance().currentUser
+                            val uid = user?.uid
+                            val db = FirebaseFirestore.getInstance()
+
+                            if (uid != null) {
                                 val eventData = hashMapOf(
-                                    "title" to eventText,
-                                    "date" to eventStartDate.toString(),
-                                    "startDate" to eventStartDate.toString(),
-                                    "endDate" to eventEndDate.toString(),
+                                    "title" to titleToSave,
+                                    "date" to startDateToSave.toString(),
+                                    "startDate" to startDateToSave.toString(),
+                                    "endDate" to endDateToSave.toString(),
                                     "timeStart" to selectedTimeStart,
                                     "timeEnd" to selectedTimeEnd,
-                                    "color" to when (selectedColor) {
-                                        Color.Red -> "red"
-                                        Color.Blue -> "blue"
-                                        Color.Green -> "green"
-                                        Color.Yellow -> "yellow"
-                                        else -> "red"
-                                    },
-                                    "isAllDay" to isAllDay,
-                                    "location" to eventLocation,
-                                    "notes" to eventNotes,
+                                    "color" to colorToSave,
+                                    "isAllDay" to allDayToSave,
+                                    "location" to locationToSave,
+                                    "notes" to notesToSave,
                                     "createdAt" to System.currentTimeMillis()
                                 )
 
@@ -820,14 +1100,37 @@ fun CalendarScreen() {
                                     .document(uid)
                                     .collection("events")
 
-                                if (selectedEvent != null) {
-                                    eventsRef.document(selectedEvent!!.id)
+                                val updatedEvent = Event(
+                                    id = editingEvent?.id ?: "",
+                                    title = titleToSave,
+                                    date = startDateToSave.toString(),
+                                    startDate = startDateToSave.toString(),
+                                    endDate = endDateToSave.toString(),
+                                    timeStart = selectedTimeStart,
+                                    timeEnd = selectedTimeEnd,
+                                    color = colorToSave,
+                                    isAllDay = allDayToSave,
+                                    location = locationToSave,
+                                    notes = notesToSave,
+                                    source = editingEvent?.source ?: "manual",
+                                    googleEventId = ""
+                                )
+
+                                events = if (editingEvent != null) {
+                                    events.mapValues { entry ->
+                                        entry.value.map { event ->
+                                            if (event.id == editingEvent.id) updatedEvent else event
+                                        }
+                                    }
+                                } else {
+                                    events + (startDateToSave to ((events[startDateToSave]
+                                        ?: emptyList()) + updatedEvent))
+                                }
+
+                                if (editingEvent != null) {
+                                    eventsRef.document(editingEvent.id)
                                         .set(eventData)
                                         .addOnSuccessListener {
-                                            selectedEvent = null
-                                            eventText = ""
-                                            showAddEventDialog = false
-
                                             eventsFireBase { resultMap ->
                                                 events = resultMap
                                             }
@@ -835,9 +1138,6 @@ fun CalendarScreen() {
                                 } else {
                                     eventsRef.add(eventData)
                                         .addOnSuccessListener {
-                                            eventText = ""
-                                            showAddEventDialog = false
-
                                             eventsFireBase { resultMap ->
                                                 events = resultMap
                                             }
@@ -847,7 +1147,11 @@ fun CalendarScreen() {
                                 println("Save failed: uid=$uid, eventText='$eventText'")
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Text("Save")
                     }
@@ -855,21 +1159,32 @@ fun CalendarScreen() {
                     if (selectedEvent != null) {
                         TextButton(
                             onClick = {
+                                val eventToDelete = selectedEvent
+
+                                if (eventToDelete != null) {
+                                    events = events.mapValues { entry ->
+                                        entry.value.filter { it.id != eventToDelete.id }
+                                    }.filterValues { it.isNotEmpty() }
+                                }
+
+                                selectedEvent = null
+                                eventText = ""
+                                eventLocation = ""
+                                eventNotes = ""
+                                eventErrorMessage = null
+                                showAddEventDialog = false
+
                                 val user = FirebaseAuth.getInstance().currentUser
                                 val uid = user?.uid
                                 val db = FirebaseFirestore.getInstance()
 
-                                if (uid != null) {
+                                if (uid != null && eventToDelete != null) {
                                     db.collection("users")
                                         .document(uid)
                                         .collection("events")
-                                        .document(selectedEvent!!.id)
+                                        .document(eventToDelete.id)
                                         .delete()
                                         .addOnSuccessListener {
-                                            selectedEvent = null
-                                            eventText = ""
-                                            showAddEventDialog = false
-
                                             eventsFireBase { resultMap ->
                                                 events = resultMap
                                             }
@@ -898,6 +1213,7 @@ fun CalendarScreen() {
                 }
                 if (showStartDatePicker) {
                     DatePickerDialog(
+                        initialDate = eventStartDate,
                         onDateSelected = { date ->
                             eventStartDate = date
                             showStartDatePicker = false
@@ -908,6 +1224,7 @@ fun CalendarScreen() {
 
                 if (showEndDatePicker) {
                     DatePickerDialog(
+                        initialDate = eventEndDate,
                         onDateSelected = { date ->
                             eventEndDate = date
                             showEndDatePicker = false
@@ -919,8 +1236,9 @@ fun CalendarScreen() {
             }
         }
     }
-
 }
+
+
 
 
 

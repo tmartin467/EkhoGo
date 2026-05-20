@@ -12,7 +12,7 @@ private val DarkColorScheme = darkColorScheme(
     secondary = Color(0xFF2F3336),
     tertiary = Rose40,
 
-    background = Color(0xFF0F0F0F),
+    background = Color(0xFF1C1C1C),
     surface = Color(0xFF1E1E1E),
 
     primaryContainer = Red40,

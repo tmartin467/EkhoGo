@@ -20,6 +20,34 @@ data class BuildingAmenity(
     val description: String
 )
 
+enum class AmenitySuggestionVote {
+    ADD,
+    REMOVE,
+    NONE
+}
+
+data class AmenitySuggestion(
+    val id: String,
+    val buildingId: String,
+    val buildingName: String,
+    val type: AmenityType,
+    val description: String,
+    val submittedByUserId: String,
+    val addVoteUserIds: List<String>,
+    val removeVoteUserIds: List<String>
+) {
+    val addVoteCount: Int = addVoteUserIds.size
+    val removeVoteCount: Int = removeVoteUserIds.size
+
+    fun voteFrom(userId: String): AmenitySuggestionVote {
+        return when (userId) {
+            in addVoteUserIds -> AmenitySuggestionVote.ADD
+            in removeVoteUserIds -> AmenitySuggestionVote.REMOVE
+            else -> AmenitySuggestionVote.NONE
+        }
+    }
+}
+
 data class BuildingAmenitySummary(
     val building: CampusBuilding,
     val amenities: List<BuildingAmenity>

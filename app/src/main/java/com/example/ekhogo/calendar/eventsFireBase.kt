@@ -31,6 +31,8 @@ fun eventsFireBase(onResult: (Map<LocalDate, List<Event>>) -> Unit) {
                     isAllDay = doc.getBoolean("isAllDay") ?: false,
                     location = doc.getString("location") ?: "",
                     notes = doc.getString("notes") ?: "",
+                    source = doc.getString("source") ?: "manual",
+                    googleEventId = doc.getString("googleEventId") ?: "",
                     startDate = doc.getString("startDate") ?: doc.getString("date") ?: "",
                     endDate = doc.getString("endDate") ?: doc.getString("date") ?: ""
                 )

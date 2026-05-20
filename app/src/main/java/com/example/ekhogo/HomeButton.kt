@@ -17,203 +17,212 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ekhogo.ToDo.ToDoClass
 import com.example.ekhogo.ToDo.ToDoHomePage
-import com.example.ekhogo.schedule.ViewSchedule
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.foundation.clickable
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 
 
 @Composable
 fun HomeButton(
     onNavigate: (Int) -> Unit,
-    toDoList: List<ToDoClass>
+    toDoList: MutableList<ToDoClass>
 ) {
 
-    val scheduleList = remember { mutableStateListOf<Map<String, Any>>() }
-    ViewSchedule(scheduleList)
-    val day = java.time.LocalDate.now().dayOfWeek
+    var userName by remember { mutableStateOf("") }
+    val firstName = userName.split(" ").firstOrNull() ?: ""
+    var classmatesCountInClasses by remember { mutableStateOf(0) }
 
-    val dayString = when (day) {
-        java.time.DayOfWeek.MONDAY -> "Mon"
-        java.time.DayOfWeek.TUESDAY -> "Tue"
-        java.time.DayOfWeek.WEDNESDAY -> "Wed"
-        java.time.DayOfWeek.THURSDAY -> "Thu"
-        java.time.DayOfWeek.FRIDAY -> "Fri"
-        java.time.DayOfWeek.SATURDAY -> "Sat"
-        java.time.DayOfWeek.SUNDAY -> "Sun"
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val db = FirebaseFirestore.getInstance()
+
+    LaunchedEffect(currentUser?.uid) {
+        val uid = currentUser?.uid
+
+        if (uid != null) {
+            db.collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    userName = document.getString("name") ?: ""
+                    val currentUserClasses = (document.get("classes") as? List<*>)
+                        ?.filterIsInstance<String>()
+                        ?: emptyList()
+
+                    val currentFriends = (document.get("friends") as? List<*>)
+                        ?.filterIsInstance<String>()
+                        ?.toSet()
+                        ?: emptySet()
+
+                    db.collection("users")
+                        .get()
+                        .addOnSuccessListener { usersSnapshot ->
+
+                            classmatesCountInClasses = usersSnapshot.documents.count { userDocument ->
+
+                                val otherUserId = userDocument.getString("uid") ?: userDocument.id
+
+                                val otherUserClasses = (userDocument.get("classes") as? List<*>)
+                                    ?.filterIsInstance<String>()
+                                    ?: emptyList()
+
+                                otherUserId != uid &&
+                                        !currentFriends.contains(otherUserId) &&
+                                        currentUserClasses.any { currentClass ->
+                                            otherUserClasses.contains(currentClass)
+                                        }
+                            }
+                        }
+                }
+        }
     }
-    val todaySchedule = scheduleList.filter { item ->
-        val days = item["days"] as? List<*> ?: emptyList<Any>()
-        days.contains(dayString)
-    }
-
-
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Top,
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.Top
     ) {
-
         Text(
-            text = "  Today's ($day) Schedule",
+            text = if(userName.isNotBlank()){
+                "Welcome Back, $firstName!"
+            } else {
+                "Welcome Back!"
+            },
             style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-            //.padding(16.dp)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
         )
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-        ) {
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                .height(210.dp),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ){
+            Image(
+                painter = painterResource(id = R.drawable.welcome_logo),
+                contentDescription = "EkhoGo welcome logo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
-            {
-
-                if (todaySchedule.isEmpty()) {
-                    Text(
-                        text = "No classes are scheduled for today",
-                        fontSize = 20.sp,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                } else {
-                    todaySchedule.forEach { item ->
-
-                        val className = item["className"] as? String ?: ""
-                        val locationName = item["locationName"] as? String ?: ""
-                        val start = item["startTime"] as? String ?: ""
-                        val end = item["endTime"] as? String ?: ""
-
-                        Text(
-                            text = "$className in $locationName: $start - $end",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                    }
-                }
-            }
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
 
-
-        Text(
-            text = "Weekly Schedule",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Card(
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-        ) {
-
-            Column(
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ){
+            Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-
-                if (scheduleList.isEmpty()) {
-                    Text(
-                        text = "No classes are scheduled for this semester",
-                        fontSize = 20.sp,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                    .weight(1f)
+                    .height(260.dp)
+                    .clickable { onNavigate(2) },
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            ){
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ){
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "People in your classes",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(34.dp)
                     )
-                } else {
-                    scheduleList.forEach { item ->
 
-                        val className = item["className"] as? String ?: ""
-                        val locationName = item["locationName"] as? String ?: ""
-                        val start = item["startTime"] as? String ?: ""
-                        val end = item["endTime"] as? String ?: ""
-                        val days = item["days"] as? List<*> ?: emptyList<Any>()
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                        Text(
-                            text = "$className in $locationName: $start - $end (${
-                                days.joinToString(
-                                    ", "
-                                )
-                            })",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(4.dp)
-                        )
-                    }
+                    Text(
+                        text = "$classmatesCountInClasses classmates found",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Find students taking similar courses.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-        }
 
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(260.dp)
+                    .clickable { onNavigate(6) },
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            ){
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ){
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "To-Do List",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(34.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
-            Button(
-                onClick = {
-                    onNavigate(5)
-                },
-                modifier = Modifier.padding(start = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Text("Add Schedule")
-            }
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "  To Do List",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
+                    Text(
+                        text = "To-Do List",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-        ) {
+                    ToDoHomePage(
+                        ToDoList = toDoList,
+                        onDelete = { item ->
+                            toDoList.remove(item)
+                        }
+                    )
 
-            ToDoHomePage(ToDoList = toDoList)
-
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
-            Button(
-                onClick = {
-                    onNavigate(6)
-                },
-            ) {
-                Text("Add ToDo Event")
+                }
             }
         }
     }

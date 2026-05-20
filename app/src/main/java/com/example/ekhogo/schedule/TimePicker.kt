@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -18,17 +17,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import java.util.Calendar
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialogUI(
+    initialHour: Int = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY),
+    initialMinute: Int = java.util.Calendar.getInstance().get(java.util.Calendar.MINUTE),
     onConfirm: (Int, Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     val currentTime = Calendar.getInstance()
 
     val state = rememberTimePickerState(
-        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
-        initialMinute = currentTime.get(Calendar.MINUTE),
+        initialHour = initialHour,
+        initialMinute = initialMinute,
         is24Hour = false
     )
 

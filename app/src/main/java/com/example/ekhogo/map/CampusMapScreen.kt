@@ -27,6 +27,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -55,7 +56,8 @@ fun CampusMapScreen(isDarkMode: Boolean) {
         "Campus Dining",
         "Academic Building",
         "Student Housing",
-        "Student Services"
+        "Student Services",
+        "Parking Lots"
     )
 
     var searchText by remember { mutableStateOf("") }
@@ -63,9 +65,11 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     var selectedCategories by remember { mutableStateOf(emptySet<String>()) }
     var showAmenityIcons by remember { mutableStateOf(true) }
     var showSuggestionDialog by remember { mutableStateOf(false) }
+    var showVoteDialog by remember { mutableStateOf(false) }
     val selectedAmenitySummary = remember { mutableStateOf<BuildingAmenitySummary?>(null) }
     val suggestionRepository = remember { AmenitySuggestionRepository() }
     var approvedSuggestions by remember { mutableStateOf(emptyList<BuildingAmenity>()) }
+    var pendingSuggestions by remember { mutableStateOf(emptyList<AmenitySuggestion>()) }
     var hasLocationPermissions by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -99,7 +103,7 @@ fun CampusMapScreen(isDarkMode: Boolean) {
     }
 
     DisposableEffect(suggestionRepository) {
-        val registration = suggestionRepository.listenApprovedSuggestions(
+        val approvedRegistration = suggestionRepository.listenApprovedSuggestions(
             onResult = { suggestions: List<BuildingAmenity> ->
                 approvedSuggestions = suggestions
             },
@@ -107,9 +111,18 @@ fun CampusMapScreen(isDarkMode: Boolean) {
                 // Keep current approvedSuggestions instead of clearing them.
             }
         )
+        val pendingRegistration = suggestionRepository.listenPendingSuggestions(
+            onResult = { suggestions: List<AmenitySuggestion> ->
+                pendingSuggestions = suggestions
+            },
+            onError = {
+                // Keep current pendingSuggestions instead of clearing them.
+            }
+        )
 
         onDispose {
-            registration.remove()
+            approvedRegistration.remove()
+            pendingRegistration.remove()
         }
     }
 
@@ -236,11 +249,37 @@ fun CampusMapScreen(isDarkMode: Boolean) {
             Text("Suggest an amenity")
         }
 
+        OutlinedButton(
+            enabled = pendingSuggestions.isNotEmpty(),
+            onClick = { showVoteDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            val requestCount = pendingSuggestions.size
+            Text(
+                if (requestCount == 0) {
+                    "No amenity requests to vote on"
+                } else if (requestCount == 1) {
+                    "Vote on 1 amenity request"
+                } else {
+                    "Vote on $requestCount amenity requests"
+                }
+            )
+        }
+
         if (showSuggestionDialog) {
             SuggestAmenityDialog(
                 repository = suggestionRepository,
                 buildings = campusBuildings,
                 onDismiss = { showSuggestionDialog = false }
+            )
+        }
+
+        if (showVoteDialog) {
+            AmenityVoteDialog(
+                repository = suggestionRepository,
+                suggestions = pendingSuggestions,
+                currentUserId = suggestionRepository.currentUserId(),
+                onDismiss = { showVoteDialog = false }
             )
         }
 
@@ -372,4 +411,154 @@ private fun SuggestAmenityDialog(
             }
         }
     )
+}
+
+@Composable
+private fun AmenityVoteDialog(
+    repository: AmenitySuggestionRepository,
+    suggestions: List<AmenitySuggestion>,
+    currentUserId: String,
+    onDismiss: () -> Unit
+) {
+    var votingSuggestionId by remember { mutableStateOf<String?>(null) }
+    var voteErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Amenity votes") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (suggestions.isEmpty()) {
+                    Text("No pending amenity requests.")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(suggestions, key = { suggestion -> suggestion.id }) { suggestion ->
+                            val userVote = suggestion.voteFrom(currentUserId)
+                            val isSubmittedByCurrentUser =
+                                suggestion.submittedByUserId == currentUserId
+                            val isVoting = votingSuggestionId == suggestion.id
+                            val canVote =
+                                currentUserId.isNotBlank() &&
+                                        !isSubmittedByCurrentUser &&
+                                        votingSuggestionId == null
+
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = suggestion.buildingName,
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        text = "${suggestion.type.label}: ${suggestion.description}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        AmenityVoteButton(
+                                            text = "Add ${suggestion.addVoteCount}/${AmenitySuggestionRepository.REQUIRED_ADD_VOTES}",
+                                            selected = userVote == AmenitySuggestionVote.ADD,
+                                            enabled = canVote,
+                                            onClick = {
+                                                votingSuggestionId = suggestion.id
+                                                voteErrorMessage = null
+                                                repository.voteOnSuggestion(
+                                                    suggestionId = suggestion.id,
+                                                    vote = AmenitySuggestionVote.ADD
+                                                ) { success ->
+                                                    votingSuggestionId = null
+                                                    if (!success) {
+                                                        voteErrorMessage =
+                                                            "Could not save vote. Please try again."
+                                                    }
+                                                }
+                                            }
+                                        )
+                                        AmenityVoteButton(
+                                            text = "Remove ${suggestion.removeVoteCount}/${AmenitySuggestionRepository.REQUIRED_REMOVE_VOTES}",
+                                            selected = userVote == AmenitySuggestionVote.REMOVE,
+                                            enabled = canVote,
+                                            onClick = {
+                                                votingSuggestionId = suggestion.id
+                                                voteErrorMessage = null
+                                                repository.voteOnSuggestion(
+                                                    suggestionId = suggestion.id,
+                                                    vote = AmenitySuggestionVote.REMOVE
+                                                ) { success ->
+                                                    votingSuggestionId = null
+                                                    if (!success) {
+                                                        voteErrorMessage =
+                                                            "Could not save vote. Please try again."
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+
+                                    if (isSubmittedByCurrentUser) {
+                                        Text(
+                                            text = "Waiting for other users to vote.",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+
+                                    if (isVoting) {
+                                        Text(
+                                            text = "Saving vote...",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                voteErrorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun AmenityVoteButton(
+    text: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    if (selected) {
+        Button(
+            enabled = enabled,
+            onClick = onClick
+        ) {
+            Text(text)
+        }
+    } else {
+        OutlinedButton(
+            enabled = enabled,
+            onClick = onClick
+        ) {
+            Text(text)
+        }
+    }
 }

@@ -214,7 +214,7 @@ fun FriendsScreen(
             OutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
-                label = { Text("Search classmates") },
+                label = { Text("Search classmates by name or class") },
                 modifier = Modifier.fillMaxWidth()
             )
         }

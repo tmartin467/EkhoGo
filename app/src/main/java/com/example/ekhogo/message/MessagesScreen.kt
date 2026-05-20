@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.google.firebase.auth.FirebaseAuth
@@ -68,6 +69,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
 
     val showUnsend = remember { mutableStateOf(false) }
     val showNewChat = remember { mutableStateOf(false) }
+    val showParticpants =  remember { mutableStateOf(false) }
 
 
 
@@ -95,6 +97,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
 
 
 
+    var userName by remember { mutableStateOf("") }
     var selectedUsers by remember { mutableStateOf(setOf<String>()) }
     var userSearch by remember { mutableStateOf("") }
     var friendUsers by remember { mutableStateOf<List<FriendUser>>(emptyList()) }
@@ -106,8 +109,14 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
             loadingNames(ids) { users ->
 
                 friendUsers = users
-                val name = users
+                //val name = users
             }
+        }
+    }
+
+    LaunchedEffect(Unit){
+        loadingOwnName(uid){name ->
+            userName = name
         }
     }
 
@@ -142,7 +151,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
             ) {
 
                 // TOP:
@@ -150,11 +159,11 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Messages")
+
 
 
                     if (!isInConversation) {
-
+                        Text("Messages")
                         // INBOX VIEW
                         LazyColumn(
                             modifier = Modifier
@@ -235,14 +244,101 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
 
                     } else {
 
-                        // CHAT VIEW
+                        val titleName by viewModel.selectedOtherUser.collectAsState()
+                        val participants by viewModel.participants.collectAsState()
+                        val isGroup by viewModel.isGroupChat.collectAsState()
 
                         val listState = rememberLazyListState()
+
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = titleName,
+                                fontSize = 24.sp,
+                                modifier = Modifier
+                                    .clickable(enabled = isGroup) {
+                                        showParticpants.value = true
+                                        viewModel.loadParticipants()
+                                    }
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.Gray,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ,
+                                textAlign = TextAlign.Center
+
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
 
                         LaunchedEffect(messages.size) {
                             if (messages.isNotEmpty()) {
                                 listState.animateScrollToItem(messages.lastIndex)
                             }
+                        }
+
+                        if(showParticpants.value) {
+                                Dialog(onDismissRequest = { showParticpants.value = false }) {
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.White, RoundedCornerShape(16.dp))
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.TopCenter
+
+                                    ) {
+
+                                        Column(
+                                            modifier = Modifier
+                                                .align(Alignment.TopCenter)
+                                        ) {
+                                            Text(
+                                                "Members",
+                                                fontSize = 24.sp,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                textAlign = TextAlign.Center
+                                            )
+                                            Spacer(modifier = Modifier.height(24.dp))
+
+                                            participants
+                                                .sorted()
+                                                .forEach { participant ->
+
+                                                Text(
+                                                    text = participant,
+                                                    fontSize = 18.sp,
+                                                    modifier = Modifier.padding(vertical = 4.dp)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(24.dp))
+
+
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Button(
+                                                    onClick = {
+                                                        viewModel.leaveChat()
+                                                        showParticpants.value = false
+                                                    },
+                                                ) {
+                                                    Text("Delete and Block Chat")
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                }
+
                         }
 
                         LazyColumn(
@@ -447,8 +543,14 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                                 Spacer(modifier = Modifier.height(12.dp))
 
 
+
                                 val friendsList = selectedUsers.joinToString(", ") { id ->
                                     friendUsers.find { it.id == id }?.name ?: ""}
+
+                                val fullList = userName + ", " + selectedUsers.joinToString(", ") { id ->
+                                    friendUsers.find { it.id == id }?.name ?: ""
+                                }
+
 
                                 Text(friendsList)
 
@@ -459,7 +561,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                                     onClick = {
                                         val actualName =
                                             if (chatName.isBlank()) {
-                                                friendsList
+                                                fullList
                                             } else {
                                                 chatName
                                             }

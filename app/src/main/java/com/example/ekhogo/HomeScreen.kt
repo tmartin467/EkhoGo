@@ -76,6 +76,7 @@ fun HomeScreen(
     onThemeModeChange: (String) -> Unit
 ) {
     val selectedTab = remember { mutableIntStateOf(0) }
+    var openSharedClassmatesFilter by remember { mutableStateOf(false) }
     val messagesViewModel: MessagesViewModel = viewModel()
     val ToDoList = remember { mutableStateListOf<ToDoClass>() }
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -246,7 +247,9 @@ fun HomeScreen(
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 2,
-                    onClick = { selectedTab.intValue = 2 },
+                    onClick = {
+                        openSharedClassmatesFilter = false
+                        selectedTab.intValue = 2 },
                     icon = { Icon(Icons.Default.Person, contentDescription = "Friends") },
                     label = { Text("Friends") },
                     colors = navigationItemColors
@@ -302,7 +305,11 @@ fun HomeScreen(
                         .padding(top = 8.dp)
                 ) {
                     HomeButton(
-                        onNavigate = { selectedTab.intValue = it },
+                        onNavigate = { tab ->
+                            if (tab == 2){
+                                openSharedClassmatesFilter = true
+                            }
+                            selectedTab.intValue = tab },
                         toDoList = ToDoList
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -317,8 +324,11 @@ fun HomeScreen(
                     viewModel = messagesViewModel,
                     onNavigateToMessages = {
                         selectedTab.intValue = 4
-                    }
+                    },
+                    showSharedClassmatesOnly = openSharedClassmatesFilter
                 )
+
+
 
                 // If Maps is selected
                 3 -> CampusMapScreen(isDarkMode = isDarkMode)

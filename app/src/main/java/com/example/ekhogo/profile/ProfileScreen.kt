@@ -358,12 +358,12 @@ fun ProfileScreen(toHomeScreen: () -> Unit) {
                                 if (uid != null) {
                                     // Convert user input strings to lists before saving to database
                                     classesList = classesInput
-                                        .split(",") // Split the input string by commas
+                                        .split(",","\n") // Split the input string by commas
                                         .map { classNames -> classNames.trim() } // remove spaces
                                         .filter { className -> className.isNotBlank() } // remove empty strings
 
                                     interestsList = interestsInput
-                                        .split(",")
+                                        .split(",","\n")
                                         .map { interestName -> interestName.trim() }
                                         .filter { interestName -> interestName.isNotBlank() }
 

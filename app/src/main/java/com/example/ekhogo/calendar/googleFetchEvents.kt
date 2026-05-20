@@ -7,13 +7,32 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+
+fun mapGoogleColorIdToAppColor(colorId: String): String {
+    return when (colorId) {
+        "1" -> "lavender"
+        "2" -> "sage"
+        "3" -> "grape"
+        "4" -> "flamingo"
+        "5" -> "banana"
+        "6" -> "tangerine"
+        "7" -> "peacock"
+        "8" -> "graphite"
+        "9" -> "blueberry"
+        "10" -> "basil"
+        "11" -> "tomato"
+        else -> "peacock"
+    }
+}
 
 suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
     withContext(Dispatchers.IO) {
         val user = FirebaseAuth.getInstance().currentUser
         val uid = user?.uid ?: return@withContext
+        println("Google import saving under uid: $uid")
         val db = FirebaseFirestore.getInstance()
 
         val url = URL(
@@ -60,6 +79,8 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
             }
 
             val googleId = item.optString("id", "")
+            val googleColorId = item.optString("colorId", "")
+            val color = mapGoogleColorIdToAppColor(googleColorId)
 
             eventsRef
                 .whereEqualTo("googleEventId", googleId)
@@ -67,18 +88,49 @@ suspend fun fetchGoogleEventsAndSaveToFirestore(accessToken: String) {
                 .addOnSuccessListener { existing ->
 
                     if (existing.isEmpty) {
+
+                        val startDate =
+                            item.getJSONObject("start")
+                                .optString("date")
+                                .ifBlank {
+                                    item.getJSONObject("start")
+                                        .optString("dateTime")
+                                        .substringBefore("T")
+                                }
+
+                        val rawEndDate =
+                            item.getJSONObject("end")
+                                .optString("date")
+                                .ifBlank {
+                                    item.getJSONObject("end")
+                                        .optString("dateTime")
+                                        .substringBefore("T")
+                                }
+                                .ifBlank { startDate }
+
+                        val endDate = if (isAllDay) {
+                            LocalDate.parse(rawEndDate).minusDays(1).toString()
+                        } else {
+                            rawEndDate
+                        }
+
                         val eventData = hashMapOf(
                             "title" to title,
-                            "date" to date,
+                            "date" to startDate,
+                            "startDate" to startDate,
+                            "endDate" to endDate,
                             "timeStart" to timeStart,
                             "timeEnd" to timeEnd,
-                            "color" to "blue",
+                            "color" to color,
+                            "googleColorId" to googleColorId,
                             "isAllDay" to isAllDay,
                             "source" to "google",
                             "googleEventId" to googleId,
                             "createdAt" to System.currentTimeMillis()
                         )
 
+                        println("Attempting to save Google event: $title")
+                        println(eventData)
                         eventsRef.add(eventData)
                     }
                 }

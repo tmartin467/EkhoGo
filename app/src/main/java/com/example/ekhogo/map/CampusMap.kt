@@ -46,6 +46,7 @@ fun getMarkerColor(category: String): Float {
         "Academic Building" -> BitmapDescriptorFactory.HUE_RED
         "Student Housing" -> BitmapDescriptorFactory.HUE_VIOLET
         "Student Services" -> BitmapDescriptorFactory.HUE_AZURE
+        "Parking Lots" -> BitmapDescriptorFactory.HUE_BLUE
         else -> BitmapDescriptorFactory.HUE_ROSE
     }
 }

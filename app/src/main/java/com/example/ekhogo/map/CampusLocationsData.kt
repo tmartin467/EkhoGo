@@ -168,4 +168,4 @@ val campusLocations = listOf(
         latLng = LatLng(34.16545, -119.04408),
         description = "Student Services"
     ),
-)
+) + parkingLotLocations

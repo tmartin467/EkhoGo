@@ -179,7 +179,7 @@ fun MessagesScreen(viewModel: MessagesViewModel) {
                                     confirmValueChange = { value ->
                                         if (value == SwipeToDismissBoxValue.EndToStart) {
                                             deleteMessageThread(preview.conversationId)
-                                            true
+                                            false
                                         } else {
                                             false
                                         }

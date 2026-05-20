@@ -39,6 +39,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.border
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 // Represents the different tabs in the Friends screen that's being shown
 enum class FriendsTab {
@@ -50,14 +52,27 @@ enum class FriendsTab {
 @Composable
 fun FriendsScreen(
     viewModel: MessagesViewModel,
-    onNavigateToMessages: () -> Unit
+    onNavigateToMessages: () -> Unit,
+    showSharedClassmatesOnly: Boolean = false
 ) {
 
     var classmates by remember { mutableStateOf<List<Friend>>(emptyList()) }
     // selectedTab controls which friend category is displayed
-    var selectedTab by remember { mutableStateOf(FriendsTab.FRIENDS) }
+    var selectedTab by remember { mutableStateOf(
+            if (showSharedClassmatesOnly) {
+                FriendsTab.ADD_FRIENDS
+            } else {
+                FriendsTab.FRIENDS
+            }
+        )
+    }
     // searchText is used when clicking on the add friend tab to search for a user
     var searchText by remember { mutableStateOf("") }
+
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val db = FirebaseFirestore.getInstance()
+
+    var currentUserClasses by remember { mutableStateOf<List<String>>(emptyList()) }
 
     var selectedFriendId by remember { mutableStateOf<String?>(null) }
 
@@ -71,6 +86,17 @@ fun FriendsScreen(
     }
 
     LaunchedEffect(Unit) {
+        val uid = currentUser?.uid
+        if (uid != null) {
+            db.collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    currentUserClasses = (document.get("classes") as? List<*>)
+                        ?.filterIsInstance<String>()
+                        ?: emptyList()
+                }
+        }
         refreshClassmates()
     }
 
@@ -104,10 +130,18 @@ fun FriendsScreen(
     val displayedClassmates =
         if (selectedTab == FriendsTab.ADD_FRIENDS) {
             visibleClassmates.filter { currentFriend ->
-                currentFriend.name.contains(searchText, ignoreCase = true) ||
+
+                val matchesSearch = currentFriend.name.contains(searchText, ignoreCase = true) ||
                         currentFriend.classesList.any { className ->
                             className.contains(searchText, ignoreCase = true)
                         }
+                val matchesSharedClasses = !showSharedClassmatesOnly ||
+                        currentFriend.classesList.any { className ->
+                            currentUserClasses.any { userClass ->
+                                userClass.equals(className, ignoreCase = true)
+                            }
+                        }
+                matchesSearch && matchesSharedClasses
             }
         } else {
             visibleClassmates

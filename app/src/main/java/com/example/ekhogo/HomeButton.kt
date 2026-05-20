@@ -52,7 +52,7 @@ import androidx.compose.runtime.remember
 @Composable
 fun HomeButton(
     onNavigate: (Int) -> Unit,
-    toDoList: List<ToDoClass>
+    toDoList: MutableList<ToDoClass>
 ) {
 
     var userName by remember { mutableStateOf("") }
@@ -146,7 +146,7 @@ fun HomeButton(
             Card(
                 modifier = Modifier
                     .weight(1f)
-                    .height(235.dp)
+                    .height(260.dp)
                     .clickable { onNavigate(2) },
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
@@ -187,7 +187,7 @@ fun HomeButton(
             Card(
                 modifier = Modifier
                     .weight(1f)
-                    .height(235.dp)
+                    .height(260.dp)
                     .clickable { onNavigate(6) },
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
@@ -215,7 +215,12 @@ fun HomeButton(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    ToDoHomePage(ToDoList = toDoList)
+                    ToDoHomePage(
+                        ToDoList = toDoList,
+                        onDelete = { item ->
+                            toDoList.remove(item)
+                        }
+                    )
 
                 }
             }
